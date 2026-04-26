@@ -29,7 +29,7 @@ def inject_globals():
 # ─────────────────────────────────────────────
 DB_CONFIG = {
     "host":     "localhost",
-    "user":     "root",          # Change to your MySQL user
+    "user":     "hms_user",      # Change to your MySQL user
     "password": "password",      # MySQL password
     "database": "hms_db",
     "charset":  "utf8mb4"
