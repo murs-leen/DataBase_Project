@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Admissions{% endblock %}
+{% block page_title %}🛏️ Admissions{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2>Patient Admissions</h2>
+    <a href="{{ url_for('add_admission') }}" class="btn btn-primary">➕ Admit Patient</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Patient</th><th>Room</th><th>Type</th>
+          <th>Doctor</th><th>Admit Date</th><th>Discharge</th>
+          <th>Diagnosis</th><th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in admissions %}
+        <tr>
+          <td>#{{ a.admission_id }}</td>
+          <td><strong>{{ a.patient_name }}</strong></td>
+          <td><span class="badge badge-primary">{{ a.room_number }}</span></td>
+          <td><span style="font-size:11px;color:var(--text-muted)">{{ a.room_type }}</span></td>
+          <td>Dr. {{ a.doctor_name }}</td>
+          <td>{{ a.admit_date }}</td>
+          <td>{{ a.discharge_date or '—' }}</td>
+          <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">
+            {{ a.diagnosis }}
+          </td>
+          <td>
+            {% if a.status=='Active' %}
+              <span class="badge badge-warning">🟡 Active</span>
+            {% else %}
+              <span class="badge badge-success">✓ Discharged</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if a.status=='Active' %}
+            <form method="POST"
+                  action="{{ url_for('discharge_patient', aid=a.admission_id) }}"
+                  onsubmit="return confirm('Discharge this patient and release the room?')">
+              <button type="submit" class="btn btn-success btn-sm">🏁 Discharge</button>
+            </form>
+            {% else %}
+            <span class="text-muted" style="font-size:11px">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text-muted)">
+          No admissions found.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-muted mt-2">{{ admissions|length }} admission(s)</div>
+</div>
+{% endblock %}

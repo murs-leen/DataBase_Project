@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Billing{% endblock %}
+{% block page_title %}💰 Billing{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2>Billing Records</h2>
+    <a href="{{ url_for('export_csv') }}" class="btn btn-ghost btn-sm">⬇ Export CSV</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Bill ID</th>
+          <th>Patient</th>
+          <th>Total Amount</th>
+          <th>Paid</th>
+          <th>Balance</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Method</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bills %}
+        <!-- FIX 1: b.balance is MySQL Decimal — (b.balance or 0)|float prevents
+             NoneType errors on comparison and format() calls -->
+        {% set balance = (b.balance or 0) | float %}
+        <tr>
+          <td>#{{ b.bill_id }}</td>
+          <td><strong>{{ b.patient_name }}</strong></td>
+          <td>PKR {{ "{:,.0f}".format((b.total_amount or 0) | float) }}</td>
+          <td>PKR {{ "{:,.0f}".format((b.paid_amount or 0) | float) }}</td>
+          <td>
+            {% if balance > 0 %}
+              <!-- FIX 2: use local float 'balance', not raw b.balance (Decimal) -->
+              <strong style="color:var(--danger)">PKR {{ "{:,.0f}".format(balance) }}</strong>
+            {% else %}
+              <span style="color:var(--success)">—</span>
+            {% endif %}
+          </td>
+          <td>{{ b.bill_date }}</td>
+          <td>
+            {% if b.payment_status == 'Paid' %}
+              <span class="badge badge-success">✓ Paid</span>
+            {% elif b.payment_status == 'Partial' %}
+              <span class="badge badge-warning">⬤ Partial</span>
+            {% else %}
+              <span class="badge badge-danger">⏳ Pending</span>
+            {% endif %}
+          </td>
+          <td>{{ b.payment_method or '—' }}</td>
+          <td>
+            {% if b.payment_status != 'Paid' %}
+              <!-- FIX 3: balance|round(2) gives a clean float to JS, not a Python Decimal -->
+              <button class="btn btn-success btn-sm"
+                      onclick="openPayModal({{ b.bill_id }}, {{ balance | round(2) }})">
+                💳 Pay
+              </button>
+            {% else %}
+              <span class="text-muted" style="font-size:11px">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted)">
+            No billing records found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<!-- FIX 4: Overlay uses display:none initially; JS opens it with display:flex
+     so the inner centering wrapper can do its job. display:block breaks centering. -->
+<div id="payModalOverlay" style="display:none;position:fixed;inset:0;
+     background:rgba(0,0,0,.6);z-index:200;">
+  <div style="display:flex;align-items:center;justify-content:center;
+              width:100%;height:100%;">
+    <div class="card fade-in" style="width:100%;max-width:380px">
+      <div class="card-header">
+        <h2>💳 Record Payment</h2>
+        <button onclick="closePayModal()" class="btn btn-ghost btn-sm">✕</button>
+      </div>
+      <form id="payForm" method="POST">
+        <div class="form-group mb-2">
+          <label for="payAmount">Amount (PKR) *</label>
+          <!-- FIX 5: max="" placeholder; openPayModal() sets it to outstanding balance.
+               HTML max prevents over-payment even if JS is slow to run. -->
+          <input type="number" name="amount" id="payAmount"
+                 min="1" step="0.01" max="" required>
+          <span class="text-muted" id="payAmountHint"></span>
+        </div>
+        <div class="form-group mb-3">
+          <label for="payMethod">Payment Method *</label>
+          <select name="method" id="payMethod" required>
+            <option value="Cash">Cash</option>
+            <option value="Card">Card</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="submit" class="btn btn-success">✓ Confirm Payment</button>
+          <button type="button" class="btn btn-ghost" onclick="closePayModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openPayModal(billId, balance) {
+  var overlay = document.getElementById('payModalOverlay');
+  var form    = document.getElementById('payForm');
+  var input   = document.getElementById('payAmount');
+  var hint    = document.getElementById('payAmountHint');
+
+  // FIX 6: Reset any stale red border/error text from a previous failed open
+  input.style.borderColor = '';
+  hint.style.color        = '';
+  hint.textContent        = '';
+
+  form.action = '/billing/pay/' + billId;
+
+  // FIX 7: Guard against NaN — if Jinja float filter ever produces NaN,
+  // isNaN() catches it before toFixed() crashes and sets input.max = 'NaN'
+  if (isNaN(balance) || balance <= 0) {
+    hint.textContent = '⚠ Invalid balance — please refresh the page.';
+    hint.style.color = 'var(--danger)';
+    overlay.style.display = 'flex';   // FIX 4: flex, not block
+    document.body.style.overflow = 'hidden';
+    return;
+  }
+
+  var safeBalance = parseFloat(balance.toFixed(2));
+  input.value     = safeBalance.toFixed(2);
+  input.max       = safeBalance.toFixed(2);   // FIX 7: safe, never NaN
+  hint.textContent = 'Outstanding balance: PKR '
+                     + safeBalance.toLocaleString('en-PK', { maximumFractionDigits: 0 });
+
+  overlay.style.display = 'flex';             // FIX 4: must be flex
+  document.body.style.overflow = 'hidden';
+}
+
+function closePayModal() {
+  document.getElementById('payModalOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// Close on overlay background click (not on card itself)
+document.getElementById('payModalOverlay').addEventListener('click', function (e) {
+  if (e.target === this) closePayModal();
+});
+
+// Client-side submit validation
+document.getElementById('payForm').addEventListener('submit', function (e) {
+  var input  = document.getElementById('payAmount');
+  var hint   = document.getElementById('payAmountHint');
+  var amt    = parseFloat(input.value);
+  var maxAmt = parseFloat(input.max);
+
+  if (!amt || amt <= 0) {
+    e.preventDefault();
+    input.style.borderColor = 'var(--danger)';
+    hint.textContent        = '⚠ Amount must be greater than zero.';
+    hint.style.color        = 'var(--danger)';
+    return;
+  }
+
+  // FIX 8: Block over-payment — server also validates, but this gives instant feedback
+  if (!isNaN(maxAmt) && amt > maxAmt) {
+    e.preventDefault();
+    input.style.borderColor = 'var(--danger)';
+    hint.textContent        = '⚠ Cannot exceed outstanding balance of PKR '
+                              + maxAmt.toLocaleString('en-PK', { maximumFractionDigits: 0 }) + '.';
+    hint.style.color        = 'var(--danger)';
+    return;
+  }
+
+  // Restore scroll before POST redirect (bfcache safety)
+  document.body.style.overflow = '';
+});
+</script>
+{% endblock %}

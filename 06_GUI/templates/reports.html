@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}📋 Reports{% endblock %}
+{% block content %}
+
+<div class="card mb-3">
+  <div class="card-header">
+    <h2>Patient Billing Report</h2>
+    <div style="display:flex;gap:8px">
+      <a href="{{ url_for('export_csv') }}" class="btn btn-ghost btn-sm">⬇ Export CSV</a>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Patient Name</th><th>Gender</th><th>Blood Group</th>
+          <th>Phone</th><th>Appointments</th><th>Admissions</th><th>Total Billed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in patient_report %}
+        <tr>
+          <td>#{{ r.patient_id }}</td>
+          <td><strong>{{ r.patient_name }}</strong></td>
+          <td>{{ r.gender }}</td>
+          <td><span class="badge badge-primary">{{ r.blood_group }}</span></td>
+          <td>{{ r.phone }}</td>
+          <td>{{ r.appointments }}</td>
+          <td>{{ r.admissions }}</td>
+          <td>
+            {% if r.total_billed > 0 %}
+              <strong style="color:var(--accent)">PKR {{ "{:,.0f}".format(r.total_billed) }}</strong>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">
+          No data.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-muted mt-2">{{ patient_report|length }} patient(s)</div>
+</div>
+
+{% endblock %}

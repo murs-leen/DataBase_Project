@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}📊 Dashboard{% endblock %}
+
+{% block content %}
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-icon blue">👥</div>
+    <div>
+      <div class="kpi-value" id="kpi-patients">{{ total_patients }}</div>
+      <div class="kpi-label">Total Active Patients</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon green">🩺</div>
+    <div>
+      <div class="kpi-value" id="kpi-doctors">{{ total_doctors }}</div>
+      <div class="kpi-label">Total Doctors</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon amber">🛏️</div>
+    <div>
+      <div class="kpi-value" id="kpi-admissions">{{ active_admissions }}</div>
+      <div class="kpi-label">Active Admissions</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon teal">💰</div>
+    <div>
+      <div class="kpi-value" id="kpi-revenue">
+        PKR {{ "{:,.0f}".format(monthly_revenue or 0) }}
+      </div>
+      <div class="kpi-label">Monthly Revenue</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="charts-grid">
+  <div class="card">
+    <div class="card-header">
+      <h2>Patients per Department</h2>
+      <span class="text-muted">All time</span>
+    </div>
+    <canvas id="deptChart" height="220"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h2>Revenue per Month</h2>
+      <span class="text-muted">Last 6 months</span>
+    </div>
+    <canvas id="revChart" height="220"></canvas>
+  </div>
+</div>
+
+<!-- Top 10 Patients Table -->
+<div class="card">
+  <div class="card-header">
+    <h2>Top 10 Patients by Billing</h2>
+    <a href="{{ url_for('reports') }}" class="btn btn-ghost btn-sm">View All →</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Patient Name</th>
+          <th>Phone</th>
+          <th>Blood Group</th>
+          <th>Total Billed</th>
+          <th>Total Paid</th>
+          <th>Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i, p in enumerate(top_patients, 1) %}
+        <tr>
+          <td>{{ i }}</td>
+          <td><strong>{{ p.name }}</strong></td>
+          <td>{{ p.phone }}</td>
+          <td><span class="badge badge-primary">{{ p.blood_group }}</span></td>
+          <td>PKR {{ "{:,.0f}".format(p.total_billed or 0) }}</td>
+          <td>PKR {{ "{:,.0f}".format(p.total_paid or 0) }}</td>
+          <td>
+            {% set bal = (p.balance or 0) %}
+            {% if bal > 0 %}
+              <span class="badge badge-danger">PKR {{ "{:,.0f}".format(bal) }}</span>
+            {% else %}
+              <span class="badge badge-success">Cleared</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CHART_COLORS = {
+  blue:  '#4f7df3', teal:  '#00d4aa',
+  green: '#27c97a', amber: '#f5a623'
+};
+const gridColor = 'rgba(255,255,255,0.05)';
+Chart.defaults.color = '#8892a4';
+Chart.defaults.font.family = 'Inter';
+
+// ── Department Chart (Bar) ──────────────────
+fetch('/api/dept_chart')
+  .then(r=>r.json()).then(data=>{
+    new Chart(document.getElementById('deptChart'), {
+      type: 'bar',
+      data: {
+        labels: data.map(d=>d.label),
+        datasets: [{
+          label: 'Patients',
+          data: data.map(d=>d.value),
+          backgroundColor: CHART_COLORS.blue,
+          borderRadius: 6, borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive:true, plugins:{legend:{display:false}},
+        scales:{
+          y:{ grid:{color:gridColor}, beginAtZero:true, ticks:{stepSize:1} },
+          x:{ grid:{display:false} }
+        }
+      }
+    });
+  });
+
+// ── Revenue Chart (Line) ────────────────────
+fetch('/api/revenue_chart')
+  .then(r=>r.json()).then(data=>{
+    new Chart(document.getElementById('revChart'), {
+      type: 'line',
+      data: {
+        labels: data.map(d=>d.label),
+        datasets: [{
+          label: 'Revenue (PKR)',
+          data: data.map(d=>d.value),
+          borderColor: CHART_COLORS.teal,
+          backgroundColor: 'rgba(0,212,170,0.10)',
+          pointBackgroundColor: CHART_COLORS.teal,
+          pointRadius: 5, tension: 0.4, fill: true,
+        }]
+      },
+      options: {
+        responsive:true,
+        plugins:{legend:{display:false}},
+        scales:{
+          y:{ grid:{color:gridColor}, beginAtZero:true },
+          x:{ grid:{display:false} }
+        }
+      }
+    });
+  });
+
+// ── Auto-refresh KPIs every 30 seconds ─────
+setInterval(()=>{
+  fetch('/api/kpis').then(r=>r.json()).then(d=>{
+    document.getElementById('kpi-patients').textContent   = d.total_patients;
+    document.getElementById('kpi-doctors').textContent    = d.total_doctors;
+    document.getElementById('kpi-admissions').textContent = d.active_admissions;
+    document.getElementById('kpi-revenue').textContent    =
+      'PKR ' + d.monthly_revenue.toLocaleString('en-PK',{maximumFractionDigits:0});
+  });
+}, 30000);
+</script>
+{% endblock %}

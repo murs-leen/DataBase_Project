@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Appointments{% endblock %}
+{% block page_title %}📅 Appointments{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2>All Appointments</h2>
+    <a href="{{ url_for('add_appointment') }}" class="btn btn-primary">＋ Schedule</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Patient</th><th>Doctor</th><th>Specialization</th>
+          <th>Date</th><th>Time</th><th>Reason</th><th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in appointments %}
+        <tr>
+          <td>#{{ a.appointment_id }}</td>
+          <td><strong>{{ a.patient_name }}</strong></td>
+          <td>Dr. {{ a.doctor_name }}</td>
+          <td><span style="font-size:11px;color:var(--text-muted)">{{ a.specialization }}</span></td>
+          <td>{{ a.appointment_date }}</td>
+          <td>{{ a.appointment_time }}</td>
+          <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            {{ a.reason }}
+          </td>
+          <td>
+            {% if a.status=='Completed' %}
+              <span class="badge badge-success">✓ Completed</span>
+            {% elif a.status=='Cancelled' %}
+              <span class="badge badge-danger">✕ Cancelled</span>
+            {% else %}
+              <span class="badge badge-warning">⏳ Scheduled</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if a.status=='Scheduled' %}
+            <form method="POST"
+                  action="{{ url_for('update_appointment_status', aid=a.appointment_id) }}"
+                  style="display:flex;gap:4px">
+              <button name="status" value="Completed" class="btn btn-success btn-sm">✓</button>
+              <button name="status" value="Cancelled" class="btn btn-danger btn-sm"
+                      onclick="return confirm('Cancel appointment?')">✕</button>
+            </form>
+            {% else %}
+            <span class="text-muted" style="font-size:11px">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted)">
+          No appointments found.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-muted mt-2">{{ appointments|length }} appointment(s)</div>
+</div>
+{% endblock %}

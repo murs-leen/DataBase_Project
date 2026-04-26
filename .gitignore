@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+env/
+.venv/
+
+# Flask
+instance/
+.webassets-cache
+flask_session/
+
+# MySQL credentials — never commit real passwords
+# (edit app.py locally with your own password)
+
+# IDE / Editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Compiled SQL cache
+*.sql.bak
+
+# Node (if any front-end tooling used)
+node_modules/

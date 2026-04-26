@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Doctors{% endblock %}
+{% block page_title %}🩺 Doctors{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2>Registered Doctors</h2>
+    {% if session.get('role')=='Admin' %}
+    <a href="{{ url_for('add_doctor') }}" class="btn btn-primary">＋ Add Doctor</a>
+    {% endif %}
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Doctor Name</th><th>Department</th>
+          <th>Specialization</th><th>License No.</th>
+          <th>Consult Fee</th><th>Available Days</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in doctors %}
+        <tr>
+          <td>#{{ d.doctor_id }}</td>
+          <td><strong>Dr. {{ d.name }}</strong></td>
+          <td><span class="badge badge-primary">{{ d.dept_name }}</span></td>
+          <td>{{ d.specialization }}</td>
+          <td><code style="font-size:11px;color:var(--accent)">{{ d.license_number }}</code></td>
+          <td>PKR {{ "{:,.0f}".format(d.consultation_fee) }}</td>
+          <td><span style="font-size:12px;color:var(--text-muted)">{{ d.available_days }}</span></td>
+          <td>
+            <span class="badge {% if d.status=='Active' %}badge-success{% else %}badge-muted{% endif %}">
+              {{ d.status }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">
+          No doctors registered.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-muted mt-2">{{ doctors|length }} doctor(s)</div>
+</div>
+{% endblock %}

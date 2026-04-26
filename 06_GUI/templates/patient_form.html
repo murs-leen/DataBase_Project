@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Patient{% endblock %}
+{% block page_title %}{{ '✏ Edit' if action=='Edit' else '➕ Add' }} Patient{% endblock %}
+{% block content %}
+
+<div class="card" style="max-width:720px">
+  <div class="card-header">
+    <h2>Patient Information</h2>
+    <a href="{{ url_for('patients') }}" class="btn btn-ghost btn-sm">← Back</a>
+  </div>
+
+  {% if error %}
+  <div class="alert alert-danger">⚠ {{ error }}</div>
+  {% endif %}
+
+  <form method="POST" id="patientForm" novalidate>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="first_name">First Name *</label>
+        <input id="first_name" name="first_name" type="text" required
+               value="{{ patient.first_name if patient else '' }}"
+               placeholder="e.g. Ali">
+      </div>
+      <div class="form-group">
+        <label for="last_name">Last Name *</label>
+        <input id="last_name" name="last_name" type="text" required
+               value="{{ patient.last_name if patient else '' }}"
+               placeholder="e.g. Hassan">
+      </div>
+      <div class="form-group">
+        <label for="dob">Date of Birth *</label>
+        <input id="dob" name="dob" type="date" required
+               value="{{ patient.date_of_birth if patient else '' }}"
+               max="{{ today }}">
+      </div>
+      <div class="form-group">
+        <label for="gender">Gender *</label>
+        <select id="gender" name="gender" required>
+          <option value="">— Select —</option>
+          {% for g in ['Male','Female','Other'] %}
+          <option value="{{ g }}"
+            {% if patient and patient.gender==g %}selected{% endif %}>{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="blood_group">Blood Group *</label>
+        <select id="blood_group" name="blood_group" required>
+          <option value="">— Select —</option>
+          {% for bg in ['A+','A-','B+','B-','AB+','AB-','O+','O-'] %}
+          <option value="{{ bg }}"
+            {% if patient and patient.blood_group==bg %}selected{% endif %}>{{ bg }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="phone">Phone Number *</label>
+        <input id="phone" name="phone" type="tel" required
+               value="{{ patient.phone if patient else '' }}"
+               placeholder="03XXXXXXXXX" pattern="03[0-9]{9}">
+      </div>
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input id="email" name="email" type="email"
+               value="{{ patient.email if patient else '' }}"
+               placeholder="optional@email.com">
+      </div>
+      <div class="form-group full">
+        <label for="address">Address *</label>
+        <textarea id="address" name="address" required
+                  placeholder="Full residential address">{{ patient.address if patient else '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="mt-3" style="display:flex;gap:10px">
+      <button type="submit" class="btn btn-primary">
+        {{ '💾 Update Patient' if action=='Edit' else '➕ Add Patient' }}
+      </button>
+      <a href="{{ url_for('patients') }}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('patientForm').addEventListener('submit', e => {
+  const required = ['first_name','last_name','dob','gender','blood_group','phone','address'];
+  let ok = true;
+  required.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el.value.trim()) {
+      el.style.borderColor = 'var(--danger)';
+      ok = false;
+    } else {
+      el.style.borderColor = '';
+    }
+  });
+  // Phone validation
+  const phone = document.getElementById('phone');
+  if (!/^03[0-9]{9}$/.test(phone.value)) {
+    phone.style.borderColor = 'var(--danger)';
+    ok = false;
+  }
+  if (!ok) e.preventDefault();
+});
+</script>
+{% endblock %}

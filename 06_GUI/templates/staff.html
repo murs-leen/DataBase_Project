@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Staff{% endblock %}
+{% block page_title %}👔 Staff Management{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2>All Hospital Staff</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Name</th><th>Type</th><th>Department / Ward</th>
+          <th>Specialization</th><th>Phone</th><th>Shift</th>
+          <th>Salary</th><th>Hire Date</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in staff %}
+        <tr>
+          <td>#{{ s.staff_id }}</td>
+          <td><strong>{{ s.name }}</strong></td>
+          <td>
+            {% if s.staff_type=='Doctor' %}
+              <span class="badge badge-primary">🩺 Doctor</span>
+            {% elif s.staff_type=='Nurse' %}
+              <span class="badge badge-success">💉 Nurse</span>
+            {% elif s.staff_type=='Technician' %}
+              <span class="badge badge-warning">🔧 Technician</span>
+            {% else %}
+              <span class="badge badge-muted">🖥 Admin</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if s.dept_name %}{{ s.dept_name }}
+            {% elif s.ward_assignment %}{{ s.ward_assignment }}
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ s.specialization or '—' }}</td>
+          <td>{{ s.phone }}</td>
+          <td><span class="badge badge-muted">{{ s.shift }}</span></td>
+          <td>PKR {{ "{:,.0f}".format(s.salary) }}</td>
+          <td>{{ s.hire_date }}</td>
+          <td>
+            <span class="badge {% if s.status=='Active' %}badge-success{% else %}badge-danger{% endif %}">
+              {{ s.status }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text-muted)">
+          No staff records.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-muted mt-2">{{ staff|length }} staff member(s)</div>
+</div>
+{% endblock %}
