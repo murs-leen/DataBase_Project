@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Error{% endblock %}
-{% block page_title %}⚠ Access Denied{% endblock %}
+{% block page_title %}<i class="fa-solid fa-triangle-exclamation fa-lg icon-accent"></i> Access Denied{% endblock %}
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:center;min-height:60vh">
   <div style="text-align:center">
-    <div style="font-size:64px;margin-bottom:16px">🚫</div>
+    <div style="font-size:64px;margin-bottom:16px"><i class="fa-solid fa-circle-xmark fa-2x icon-danger"></i></div>
     <h2 style="font-size:24px;margin-bottom:8px">Access Denied</h2>
     <p style="color:var(--text-muted);margin-bottom:24px">{{ msg or 'You do not have permission to view this page.' }}</p>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">← Back to Dashboard</a>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-primary"><i class="fa-solid fa-arrow-left fa-sm"></i> Back to Dashboard</a>
   </div>
 </div>
 {% endblock %}

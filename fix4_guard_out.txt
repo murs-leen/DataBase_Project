@@ -1,0 +1,2 @@
+delete_attempt_status=302
+room_exists_after_attempt=1

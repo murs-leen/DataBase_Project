@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Appointments{% endblock %}
-{% block page_title %}📅 Appointments{% endblock %}
+{% block page_title %}<i class="fa-solid fa-calendar-check fa-lg icon-primary"></i> Appointments{% endblock %}
 {% block content %}
 <div class="card">
   <div class="card-header">
     <h2>All Appointments</h2>
-    <a href="{{ url_for('add_appointment') }}" class="btn btn-primary">＋ Schedule</a>
+    <a href="{{ url_for('add_appointment') }}" class="btn btn-primary"><i class="fa-solid fa-plus fa-sm"></i> Schedule</a>
   </div>
   <div class="table-wrap">
     <table>
@@ -29,11 +29,11 @@
           </td>
           <td>
             {% if a.status=='Completed' %}
-              <span class="badge badge-success">✓ Completed</span>
+              <span class="badge badge-success"><i class="fa-solid fa-circle-check fa-sm"></i> Completed</span>
             {% elif a.status=='Cancelled' %}
-              <span class="badge badge-danger">✕ Cancelled</span>
+              <span class="badge badge-danger"><i class="fa-solid fa-circle-xmark fa-sm"></i> Cancelled</span>
             {% else %}
-              <span class="badge badge-warning">⏳ Scheduled</span>
+              <span class="badge badge-warning"><i class="fa-solid fa-clock fa-sm"></i> Scheduled</span>
             {% endif %}
           </td>
           <td>
@@ -41,9 +41,9 @@
             <form method="POST"
                   action="{{ url_for('update_appointment_status', aid=a.appointment_id) }}"
                   style="display:flex;gap:4px">
-              <button name="status" value="Completed" class="btn btn-success btn-sm">✓</button>
+              <button name="status" value="Completed" class="btn btn-success btn-sm"><i class="fa-solid fa-circle-check fa-sm"></i></button>
               <button name="status" value="Cancelled" class="btn btn-danger btn-sm"
-                      onclick="return confirm('Cancel appointment?')">✕</button>
+                      onclick="return confirm('Cancel appointment?')"><i class="fa-solid fa-circle-xmark fa-sm"></i></button>
             </form>
             {% else %}
             <span class="text-muted" style="font-size:11px">—</span>

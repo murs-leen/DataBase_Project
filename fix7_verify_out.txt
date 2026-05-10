@@ -1,0 +1,6 @@
+login=302:/dashboard
+view=200
+add=302, before_staff=3, after_staff=4, staff_id=5
+users_linked=user_id=5, before_users=4, after_users=5
+edit=302, edited_ok=1
+delete=302, staff_after=0, user_after=0

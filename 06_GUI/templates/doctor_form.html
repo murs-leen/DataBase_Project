@@ -1,81 +1,96 @@
 {% extends "base.html" %}
-{% block title %}Add Doctor{% endblock %}
-{% block page_title %}➕ Add Doctor{% endblock %}
+{% block title %}{{ action }} Doctor{% endblock %}
+{% block page_title %}<i class="fa-solid fa-user-doctor fa-lg icon-primary"></i> {{ action }} Doctor{% endblock %}
 {% block content %}
 <div class="card" style="max-width:760px">
   <div class="card-header">
-    <h2>Doctor Registration</h2>
-    <a href="{{ url_for('doctors') }}" class="btn btn-ghost btn-sm">← Back</a>
+    <h2>{% if action == 'Edit' %}Edit Doctor{% else %}Doctor Registration{% endif %}</h2>
+    <a href="{{ url_for('doctors') }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-arrow-left fa-sm"></i> Back</a>
   </div>
-  {% if error %}<div class="alert alert-danger">⚠ {{ error }}</div>{% endif %}
+  {% if error %}<div class="alert alert-danger"><i class="fa-solid fa-triangle-exclamation fa-sm"></i> {{ error }}</div>{% endif %}
 
   <form method="POST" id="docForm" novalidate>
     <p class="text-muted mb-2" style="font-size:13px">
-      ℹ A Staff record will be automatically created for this doctor.
+      <i class="fa-solid fa-circle-info fa-sm icon-muted"></i> A Staff record will be automatically created for this doctor.
     </p>
     <div class="form-grid">
       <div class="form-group">
         <label>First Name *</label>
-        <input name="first_name" type="text" required placeholder="First name">
+        <input name="first_name" type="text" required placeholder="First name" value="{{ doctor.first_name if doctor else '' }}">
       </div>
       <div class="form-group">
         <label>Last Name *</label>
-        <input name="last_name" type="text" required placeholder="Last name">
+        <input name="last_name" type="text" required placeholder="Last name" value="{{ doctor.last_name if doctor else '' }}">
       </div>
       <div class="form-group">
         <label>Department *</label>
         <select name="dept_id" required>
           <option value="">— Select Department —</option>
           {% for d in depts %}
-          <option value="{{ d.dept_id }}">{{ d.dept_name }}</option>
+          <option value="{{ d.dept_id }}" {% if doctor and doctor.dept_id == d.dept_id %}selected{% endif %}>{{ d.dept_name }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="form-group">
         <label>Specialization *</label>
-        <input name="specialization" type="text" required placeholder="e.g. Cardiology">
+        <input name="specialization" type="text" required placeholder="e.g. Cardiology" value="{{ doctor.specialization if doctor else '' }}">
       </div>
       <div class="form-group">
         <label>License Number *</label>
-        <input name="license_number" type="text" required placeholder="PMDC-YYYY-XXX">
+        <input name="license_number" type="text" required placeholder="PMDC-YYYY-XXX" value="{{ doctor.license_number if doctor else '' }}">
       </div>
       <div class="form-group">
         <label>Consultation Fee (PKR) *</label>
-        <input name="consultation_fee" type="number" min="1" step="100" required placeholder="e.g. 2500">
+        <input name="consultation_fee" type="number" min="1" step="100" required placeholder="e.g. 2500" value="{{ doctor.consultation_fee if doctor else '' }}">
       </div>
       <div class="form-group">
         <label>Phone *</label>
-        <input name="phone" type="tel" required placeholder="03XXXXXXXXX">
+        <input name="phone" type="tel" required placeholder="03XXXXXXXXX" value="{{ doctor.phone if doctor else '' }}">
       </div>
       <div class="form-group">
         <label>Email</label>
-        <input name="email" type="email" placeholder="doctor@hms.pk">
+        <input name="email" type="email" placeholder="doctor@hms.pk" value="{{ doctor.email if doctor else '' }}">
       </div>
       <div class="form-group">
         <label>Hire Date *</label>
-        <input name="hire_date" type="date" required>
+        <input name="hire_date" type="date" required value="{{ doctor.hire_date if doctor else '' }}">
       </div>
       <div class="form-group">
         <label>Monthly Salary (PKR) *</label>
-        <input name="salary" type="number" min="1" required placeholder="e.g. 200000">
+        <input name="salary" type="number" min="1" required placeholder="e.g. 200000" value="{{ doctor.salary if doctor else '' }}">
       </div>
       <div class="form-group">
         <label>Shift *</label>
         <select name="shift" required>
           <option value="">— Select Shift —</option>
-          <option value="Morning">Morning</option>
-          <option value="Evening">Evening</option>
-          <option value="Night">Night</option>
+          <option value="Morning" {% if doctor and doctor.shift == 'Morning' %}selected{% endif %}>Morning</option>
+          <option value="Evening" {% if doctor and doctor.shift == 'Evening' %}selected{% endif %}>Evening</option>
+          <option value="Night" {% if doctor and doctor.shift == 'Night' %}selected{% endif %}>Night</option>
         </select>
       </div>
       <div class="form-group">
         <label>Available Days *</label>
-        <input name="available_days" type="text" required placeholder="e.g. Mon,Tue,Wed,Thu">
+        <input name="available_days" type="text" required placeholder="e.g. Mon,Tue,Wed,Thu" value="{{ doctor.available_days if doctor else '' }}">
       </div>
+      {% if action == 'Edit' %}
+      <div class="form-group">
+        <label>Status *</label>
+        <select name="status" required>
+          <option value="Active" {% if doctor and doctor.status == 'Active' %}selected{% endif %}>Active</option>
+          <option value="Inactive" {% if doctor and doctor.status == 'Inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+      {% endif %}
     </div>
     <div class="mt-3" style="display:flex;gap:10px">
-      <button type="submit" class="btn btn-primary">➕ Register Doctor</button>
-      <a href="{{ url_for('doctors') }}" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        {% if action == 'Edit' %}
+        <i class="fa-solid fa-floppy-disk fa-sm"></i> Update Doctor
+        {% else %}
+        <i class="fa-solid fa-plus fa-sm"></i> Register Doctor
+        {% endif %}
+      </button>
+      <a href="{{ url_for('doctors') }}" class="btn btn-ghost"><i class="fa-solid fa-xmark fa-sm"></i> Cancel</a>
     </div>
   </form>
 </div>

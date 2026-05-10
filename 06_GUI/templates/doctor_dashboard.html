@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Doctor Dashboard{% endblock %}
+{% block page_title %}<i class="fa-solid fa-user-doctor fa-lg icon-primary"></i> Doctor's Financial Dashboard{% endblock %}
+
+{% block content %}
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-icon blue"><i class="fa-solid fa-indian-rupee-sign fa-xl icon-accent"></i></div>
+    <div>
+      <div class="kpi-value" id="kpi-today">
+        PKR {{ "{:,.0f}".format(today_rev or 0) }}
+      </div>
+      <div class="kpi-label">Today's Revenue</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon amber"><i class="fa-solid fa-chart-line fa-xl icon-accent"></i></div>
+    <div>
+      <div class="kpi-value" id="kpi-yesterday">
+        PKR {{ "{:,.0f}".format(yesterday_rev or 0) }}
+      </div>
+      <div class="kpi-label">Yesterday's Revenue</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon teal"><i class="fa-solid fa-file-invoice-dollar fa-xl icon-accent"></i></div>
+    <div>
+      <div class="kpi-value" id="kpi-monthly">
+        PKR {{ "{:,.0f}".format(monthly_rev or 0) }}
+      </div>
+      <div class="kpi-label">Monthly Revenue</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon green"><i class="fa-solid fa-building-columns fa-xl icon-accent"></i></div>
+    <div>
+      <div class="kpi-value" id="kpi-total">
+        PKR {{ "{:,.0f}".format(total_rev or 0) }}
+      </div>
+      <div class="kpi-label">Total Income (All Time)</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="charts-grid" style="grid-template-columns: 1fr;">
+  <div class="card">
+    <div class="card-header">
+      <h2>7-Day Revenue</h2>
+      <span class="text-muted">Last 7 days</span>
+    </div>
+    <canvas id="sevenDayChart" height="100"></canvas>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CHART_COLORS = {
+  blue:  '#4f7df3', teal:  '#00d4aa',
+  green: '#27c97a', amber: '#f5a623'
+};
+const gridColor = 'rgba(255,255,255,0.05)';
+Chart.defaults.color = '#8892a4';
+Chart.defaults.font.family = 'Inter';
+
+const sevenDayData = {{ seven_day_rev | tojson }};
+
+new Chart(document.getElementById('sevenDayChart'), {
+  type: 'bar',
+  data: {
+    labels: sevenDayData.map(d=>d.date_label),
+    datasets: [{
+      label: 'Revenue (PKR)',
+      data: sevenDayData.map(d=>d.daily_revenue),
+      backgroundColor: CHART_COLORS.teal,
+      borderRadius: 6, borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive:true, plugins:{legend:{display:false}},
+    scales:{
+      y:{ grid:{color:gridColor}, beginAtZero:true },
+      x:{ grid:{display:false} }
+    }
+  }
+});
+</script>
+{% endblock %}

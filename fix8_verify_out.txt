@@ -1,0 +1,7 @@
+login=302:/dashboard
+billing_page=200
+generate_page=200
+generate_post=302, count_before=1, count_after=2, bid=2
+view_bill=200
+pay1=302, status_after_pay1=Partial
+pay2=302, status_after_pay2=Paid

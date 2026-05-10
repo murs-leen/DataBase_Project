@@ -1,0 +1,6 @@
+login=302:/dashboard
+view=200
+add=302, staff_id=4, doctor_id=3
+edit=302, edited_ok=1
+delete_blocked=302, before_guard=1, after_guard=1
+delete_ok=302, staff_after=0, doctor_after=0, user_after=0

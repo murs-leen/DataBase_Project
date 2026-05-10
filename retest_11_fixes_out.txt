@@ -1,0 +1,8 @@
+Fix1 appointments scoped: PASS
+Fix2 routes exist: PASS
+Fix3 departments page: PASS
+Fix4 rooms page: PASS
+Fix5 medicines page: PASS
+Fix6 doctor edit page: PASS
+Fix7 staff add page: PASS
+Fix8 staff billing access: PASS

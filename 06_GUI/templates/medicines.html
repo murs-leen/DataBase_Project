@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Medicines{% endblock %}
+{% block page_title %}<i class="fa-solid fa-pills fa-lg icon-primary"></i> Medicine Management{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2>Medicines</h2>
+    <a href="{{ url_for('add_medicine') }}" class="btn btn-primary"><i class="fa-solid fa-plus fa-sm"></i> Add Medicine</a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+      <div class="alert {% if category == 'danger' %}alert-danger{% else %}alert-success{% endif %}">
+        <i class="fa-solid {% if category == 'danger' %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %} fa-sm"></i>
+        {{ msg }}
+      </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% if error %}
+  <div class="alert alert-danger"><i class="fa-solid fa-triangle-exclamation fa-sm"></i> {{ error }}</div>
+  {% endif %}
+
+  {% if form_mode in ['add', 'edit'] %}
+  <form method="POST" class="form-grid" action="{% if form_mode == 'edit' %}{{ url_for('edit_medicine', medicine_id=edit_id) }}{% else %}{{ url_for('add_medicine') }}{% endif %}">
+    <div class="form-group">
+      <label>Medicine Name *</label>
+      <input name="medicine_name" required value="{{ form_data.medicine_name if form_data else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Generic Name *</label>
+      <input name="generic_name" required value="{{ form_data.generic_name if form_data else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Category *</label>
+      <input name="category" required value="{{ form_data.category if form_data else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Unit Price *</label>
+      <input type="number" step="0.01" min="0" name="unit_price" required value="{{ form_data.unit_price if form_data else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Stock Quantity *</label>
+      <input type="number" min="0" name="stock_quantity" required value="{{ form_data.stock_quantity if form_data else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Manufacturer *</label>
+      <input name="manufacturer" required value="{{ form_data.manufacturer if form_data else '' }}">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk fa-sm"></i> {% if form_mode == 'edit' %}Update{% else %}Save{% endif %}</button>
+      <a href="{{ url_for('medicines') }}" class="btn btn-ghost"><i class="fa-solid fa-xmark fa-sm"></i> Cancel</a>
+    </div>
+  </form>
+  <hr style="border-color:var(--border);margin:18px 0;">
+  {% endif %}
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Generic</th>
+          <th>Category</th>
+          <th>Unit Price</th>
+          <th>Stock</th>
+          <th>Manufacturer</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in medicines %}
+        <tr>
+          <td>#{{ m.medicine_id }}</td>
+          <td>{{ m.medicine_name }}</td>
+          <td>{{ m.generic_name }}</td>
+          <td>{{ m.category }}</td>
+          <td>PKR {{ "{:,.0f}".format(m.unit_price or 0) }}</td>
+          <td>{{ m.stock_quantity }}</td>
+          <td>{{ m.manufacturer }}</td>
+          <td style="display:flex;gap:8px;">
+            <a href="{{ url_for('edit_medicine', medicine_id=m.medicine_id) }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-pen-to-square fa-sm"></i> Edit</a>
+            <form method="POST" action="{{ url_for('delete_medicine', medicine_id=m.medicine_id) }}" onsubmit="return confirm('Delete this medicine?')">
+              <button type="submit" class="btn btn-danger btn-sm"><i class="fa-solid fa-trash fa-sm"></i> Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-muted" style="text-align:center;padding:20px;">No medicines found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

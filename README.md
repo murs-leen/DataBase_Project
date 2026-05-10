@@ -1,7 +1,7 @@
-# 🏥 Hospital Management System (HMS)
+# 🏥 ClinicFlow (Clinic Management System)
 ## Database Systems Lab – Semester Project
 
-A complete, database-driven Hospital Management System built with **MySQL 8.0**, **Python Flask**, and **Vanilla HTML/CSS/JS**.
+A complete, database-driven Clinic Management System built with **MySQL 8.0**, **Python Flask**, and **Vanilla HTML/CSS/JS**.
 
 ---
 
@@ -95,7 +95,6 @@ Then open your browser at: **http://localhost:5000**
 | Doctor  | `dr_ahmed`    | `Doc@1234`  | Appointments, Rx     |
 | Doctor  | `dr_sara`     | `Doc@1234`  | Appointments, Rx     |
 | Staff   | `staff_zahid` | `Staff@123` | Patients, Admissions |
-| Viewer  | `viewer`      | `View@123`  | Reports only         |
 
 ---
 
@@ -147,7 +146,7 @@ Then open your browser at: **http://localhost:5000**
 | Functions (2) | ✅ Used in SELECT queries |
 | Triggers (3) | ✅ BEFORE INSERT, AFTER UPDATE, AFTER DELETE |
 | Cursors (2) | ✅ Explicit + parameterized |
-| GUI Login (2 roles) | ✅ Admin + Doctor/Staff/Viewer |
+| GUI Login (2 roles) | ✅ Admin + Doctor/Staff |
 | CRUD Forms (3+) | ✅ Patient, Doctor, Appointment, Admission, Billing |
 | Search + filter | ✅ Patient search by name/phone/ID |
 | Dashboard KPI cards (4) | ✅ Patients, Doctors, Admissions, Revenue |

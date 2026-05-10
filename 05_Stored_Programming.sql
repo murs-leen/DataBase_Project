@@ -262,23 +262,19 @@ BEGIN
 END$$
 
 -- =============================================================
--- TRIGGER 2: trg_after_update_billing (AFTER UPDATE)
+-- TRIGGER 2: trg_before_update_billing (BEFORE UPDATE)
 -- Automatically sets payment_status based on paid_amount
 -- =============================================================
-CREATE TRIGGER trg_after_update_billing
-AFTER UPDATE ON BILLING
+CREATE TRIGGER trg_before_update_billing
+BEFORE UPDATE ON BILLING
 FOR EACH ROW
 BEGIN
     IF NEW.paid_amount >= NEW.total_amount THEN
-        UPDATE BILLING
-        SET payment_status = 'Paid'
-        WHERE bill_id = NEW.bill_id
-          AND payment_status != 'Paid';
+        SET NEW.payment_status = 'Paid';
     ELSEIF NEW.paid_amount > 0 AND NEW.paid_amount < NEW.total_amount THEN
-        UPDATE BILLING
-        SET payment_status = 'Partial'
-        WHERE bill_id = NEW.bill_id
-          AND payment_status = 'Pending';
+        SET NEW.payment_status = 'Partial';
+    ELSE
+        SET NEW.payment_status = 'Pending';
     END IF;
 END$$
 

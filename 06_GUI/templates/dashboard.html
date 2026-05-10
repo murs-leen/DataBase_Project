@@ -1,33 +1,80 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
-{% block page_title %}📊 Dashboard{% endblock %}
+{% block page_title %}<i class="fa-solid fa-gauge-high fa-lg icon-primary"></i> Dashboard{% endblock %}
 
 {% block content %}
+<section class="hero-section fade-in">
+  <div class="hero-orb"></div>
+  <h1 class="hero-title">Operate your clinic with confidence</h1>
+  <p class="hero-subtitle">Unified access to patients, doctors, appointments, admissions, and billing in one production-ready command center.</p>
+  <div class="hero-actions">
+    <a href="{{ url_for('add_appointment') }}" class="btn btn-primary">Schedule Appointment</a>
+    <a href="{{ url_for('reports') }}" class="btn btn-ghost">View Reports</a>
+  </div>
+</section>
+
+<section class="feature-grid">
+  <article class="card feature-card fade-in">
+    <div class="feature-icon"><i class="fa-solid fa-user-doctor fa-xl icon-accent"></i></div>
+    <h3>Clinical Management</h3>
+    <p>Track doctors, consultations, and active patient pipelines from one dashboard.</p>
+  </article>
+  <article class="card feature-card fade-in">
+    <div class="feature-icon"><i class="fa-solid fa-chart-line fa-xl icon-accent"></i></div>
+    <h3>Operational Visibility</h3>
+    <p>Monitor admissions and occupancy trends with rapid access to details.</p>
+  </article>
+  <article class="card feature-card fade-in">
+    <div class="feature-icon"><i class="fa-solid fa-indian-rupee-sign fa-xl icon-accent"></i></div>
+    <h3>Revenue Monitoring</h3>
+    <p>Review billed, paid, and outstanding balances with instant context.</p>
+  </article>
+</section>
+
+<section class="stats-bar fade-in">
+  <div>
+    <div class="stat-value">{{ total_patients }}</div>
+    <div class="stat-label">Total Patients</div>
+  </div>
+  <div>
+    <div class="stat-value">{{ total_doctors }}</div>
+    <div class="stat-label">Total Doctors</div>
+  </div>
+  <div>
+    <div class="stat-value">{{ active_admissions }}</div>
+    <div class="stat-label">Active Admissions</div>
+  </div>
+  <div>
+    <div class="stat-value">PKR {{ "{:,.0f}".format(monthly_revenue or 0) }}</div>
+    <div class="stat-label">Monthly Revenue</div>
+  </div>
+</section>
+
 <!-- KPI Cards -->
 <div class="kpi-grid">
   <div class="kpi-card">
-    <div class="kpi-icon blue">👥</div>
+    <div class="kpi-icon blue"><i class="fa-solid fa-hospital-user fa-xl icon-accent"></i></div>
     <div>
       <div class="kpi-value" id="kpi-patients">{{ total_patients }}</div>
       <div class="kpi-label">Total Active Patients</div>
     </div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-icon green">🩺</div>
+    <div class="kpi-icon green"><i class="fa-solid fa-user-doctor fa-xl icon-accent"></i></div>
     <div>
       <div class="kpi-value" id="kpi-doctors">{{ total_doctors }}</div>
       <div class="kpi-label">Total Doctors</div>
     </div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-icon amber">🛏️</div>
+    <div class="kpi-icon amber"><i class="fa-solid fa-bed fa-xl icon-accent"></i></div>
     <div>
       <div class="kpi-value" id="kpi-admissions">{{ active_admissions }}</div>
       <div class="kpi-label">Active Admissions</div>
     </div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-icon teal">💰</div>
+    <div class="kpi-icon teal"><i class="fa-solid fa-indian-rupee-sign fa-xl icon-accent"></i></div>
     <div>
       <div class="kpi-value" id="kpi-revenue">
         PKR {{ "{:,.0f}".format(monthly_revenue or 0) }}

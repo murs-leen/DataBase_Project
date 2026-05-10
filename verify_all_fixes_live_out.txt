@@ -1,0 +1,31 @@
+FIX1 staff_id=1 doctor_id=1
+FIX1 appt_count_scoped=1
+FIX1 doctor_login=302 loc=/dashboard
+FIX1 other_doctor_token_visible=False
+FIX2 rx_created_status=302 rx_id=5
+FIX2 PRESCRIPTION before=4 after=5
+FIX2 PRESCRIPTION_DETAILS before=2 after=3
+FIX2 PRESCRIPTION_last=[(5, 2, 1, datetime.date(2026, 5, 7))]
+FIX2 PD_last=[(3, 5, 1, '1 tab (Daily)', 3, 3)]
+FIX3 admin_login=302
+FIX3 dept_count_before=2 dept_count_after=2
+FIX3 neurology_row_after_edit=[('Neurology', 'Block Y')]
+FIX3 delete_cardiology_blocked=True
+FIX4 room_count_before=3 room_count_after=3
+FIX4 room_401_inserted=[(5, '401', 'Emergency', Decimal('14000.00'))]
+FIX4 room_401_charge_after_edit=[(Decimal('15000.00'),)]
+FIX4 occupied_delete_blocked=True
+FIX5 med_count_before=3 med_count_after=3
+FIX5 metformin_row=[(5, Decimal('55.00'))] price_after_edit=[(Decimal('60.00'),)]
+FIX5 used_med_delete_blocked=True
+FIX6 doctor_test_fee=5000.00
+FIX6 delete_guard_worked=True
+FIX7 staff_counts_before=3 after_add=4 after_del=3
+FIX7 users_counts_before=4 after_add=5 after_del=4
+FIX7 staff_last_insert=[(6, 'Test', 'Nurse', 'Morning')]
+FIX7 users_last_insert=[(6, 'test.nurse.5851', 'test.nurse.5851@hospital.com', 'Staff', 6)]
+FIX7 nurse_shift_after_edit=Night
+FIX8 staff_billing_pages=200,200
+FIX8 bill_last=[(3, 2, Decimal('999.00'), Decimal('0.00'), 'Pending')]
+FIX8 status_after_pay=Paid
+FINAL_COUNTS=[('USERS', 4), ('PATIENT', 2), ('DOCTOR', 2), ('STAFF', 3), ('APPOINTMENT', 4), ('ADMISSION', 1), ('PRESCRIPTION', 5), ('PRESCRIPTION_DETAILS', 3), ('BILLING', 3), ('ROOM', 3), ('MEDICINE', 3), ('DEPARTMENT', 2)]

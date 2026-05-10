@@ -1,0 +1,4 @@
+login 302 /dashboard
+appointments 200 OTHERDOCONLY_visible False
+patients 200
+dashboard 200

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Bill #{{ bill.bill_id }}{% endblock %}
+{% block page_title %}<i class="fa-solid fa-eye fa-lg icon-primary"></i> View Bill{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:900px;">
+  <div class="card-header">
+    <h2>Bill #{{ bill.bill_id }}</h2>
+    <a href="{{ url_for('billing') }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-arrow-left fa-sm"></i> Back</a>
+  </div>
+  <div class="stats-bar" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+    <div>
+      <div class="stat-value">PKR {{ "{:,.0f}".format(bill.total_amount or 0) }}</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div>
+      <div class="stat-value">PKR {{ "{:,.0f}".format(bill.paid_amount or 0) }}</div>
+      <div class="stat-label">Paid</div>
+    </div>
+    <div>
+      <div class="stat-value">PKR {{ "{:,.0f}".format(((bill.total_amount or 0) - (bill.paid_amount or 0)) | float) }}</div>
+      <div class="stat-label">Balance</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div><strong>Patient:</strong> {{ bill.patient_name }}</div>
+    <div><strong>Date:</strong> {{ bill.bill_date }}</div>
+    <div><strong>Status:</strong> {{ bill.payment_status }}</div>
+    <div><strong>Method:</strong> {{ bill.payment_method or '—' }}</div>
+    <div><strong>Admission:</strong> {{ bill.admission_id or '—' }}</div>
+  </div>
+</div>
+{% endblock %}
+

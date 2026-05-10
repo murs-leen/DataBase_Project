@@ -1,11 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Billing{% endblock %}
-{% block page_title %}💰 Billing{% endblock %}
+{% block page_title %}<i class="fa-solid fa-file-invoice-dollar fa-lg icon-primary"></i> Billing{% endblock %}
 {% block content %}
 <div class="card">
   <div class="card-header">
     <h2>Billing Records</h2>
-    <a href="{{ url_for('export_csv') }}" class="btn btn-ghost btn-sm">⬇ Export CSV</a>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a href="{{ url_for('billing_generate') }}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus fa-sm"></i> Generate Bill</a>
+      <a href="{{ url_for('export_csv') }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-download fa-sm"></i> Export CSV</a>
+    </div>
   </div>
   <div class="table-wrap">
     <table>
@@ -43,11 +46,11 @@
           <td>{{ b.bill_date }}</td>
           <td>
             {% if b.payment_status == 'Paid' %}
-              <span class="badge badge-success">✓ Paid</span>
+              <span class="badge badge-success"><i class="fa-solid fa-circle-check fa-sm"></i> Paid</span>
             {% elif b.payment_status == 'Partial' %}
-              <span class="badge badge-warning">⬤ Partial</span>
+              <span class="badge badge-warning"><i class="fa-solid fa-clock fa-sm"></i> Partial</span>
             {% else %}
-              <span class="badge badge-danger">⏳ Pending</span>
+              <span class="badge badge-danger"><i class="fa-solid fa-triangle-exclamation fa-sm"></i> Pending</span>
             {% endif %}
           </td>
           <td>{{ b.payment_method or '—' }}</td>
@@ -56,11 +59,12 @@
               <!-- FIX 3: balance|round(2) gives a clean float to JS, not a Python Decimal -->
               <button class="btn btn-success btn-sm"
                       onclick="openPayModal({{ b.bill_id }}, {{ balance | round(2) }})">
-                💳 Pay
+                <i class="fa-solid fa-file-invoice-dollar fa-sm"></i> Pay
               </button>
             {% else %}
               <span class="text-muted" style="font-size:11px">—</span>
             {% endif %}
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('billing_view', bid=b.bill_id) }}"><i class="fa-solid fa-eye fa-sm"></i></a>
           </td>
         </tr>
         {% else %}
@@ -79,13 +83,13 @@
 <!-- FIX 4: Overlay uses display:none initially; JS opens it with display:flex
      so the inner centering wrapper can do its job. display:block breaks centering. -->
 <div id="payModalOverlay" style="display:none;position:fixed;inset:0;
-     background:rgba(0,0,0,.6);z-index:200;">
+     background:rgba(0,0,0,.7);z-index:200;">
   <div style="display:flex;align-items:center;justify-content:center;
               width:100%;height:100%;">
-    <div class="card fade-in" style="width:100%;max-width:380px">
+    <div class="card fade-in" style="width:100%;max-width:420px">
       <div class="card-header">
-        <h2>💳 Record Payment</h2>
-        <button onclick="closePayModal()" class="btn btn-ghost btn-sm">✕</button>
+        <h2><i class="fa-solid fa-file-invoice-dollar fa-lg icon-accent"></i> Record Payment</h2>
+        <button type="button" onclick="closePayModal()" class="btn btn-icon"><i class="fa-solid fa-xmark fa-lg"></i></button>
       </div>
       <form id="payForm" method="POST">
         <div class="form-group mb-2">
@@ -106,8 +110,8 @@
           </select>
         </div>
         <div style="display:flex;gap:8px">
-          <button type="submit" class="btn btn-success">✓ Confirm Payment</button>
-          <button type="button" class="btn btn-ghost" onclick="closePayModal()">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="fa-solid fa-floppy-disk fa-sm"></i> Confirm Payment</button>
+          <button type="button" class="btn btn-ghost" onclick="closePayModal()"><i class="fa-solid fa-xmark fa-sm"></i> Cancel</button>
         </div>
       </form>
     </div>
@@ -134,7 +138,7 @@ function openPayModal(billId, balance) {
   // FIX 7: Guard against NaN — if Jinja float filter ever produces NaN,
   // isNaN() catches it before toFixed() crashes and sets input.max = 'NaN'
   if (isNaN(balance) || balance <= 0) {
-    hint.textContent = '⚠ Invalid balance — please refresh the page.';
+    hint.textContent = 'Warning: Invalid balance — please refresh the page.';
     hint.style.color = 'var(--danger)';
     overlay.style.display = 'flex';   // FIX 4: flex, not block
     document.body.style.overflow = 'hidden';
@@ -171,7 +175,7 @@ document.getElementById('payForm').addEventListener('submit', function (e) {
   if (!amt || amt <= 0) {
     e.preventDefault();
     input.style.borderColor = 'var(--danger)';
-    hint.textContent        = '⚠ Amount must be greater than zero.';
+    hint.textContent        = 'Warning: Amount must be greater than zero.';
     hint.style.color        = 'var(--danger)';
     return;
   }
@@ -180,7 +184,7 @@ document.getElementById('payForm').addEventListener('submit', function (e) {
   if (!isNaN(maxAmt) && amt > maxAmt) {
     e.preventDefault();
     input.style.borderColor = 'var(--danger)';
-    hint.textContent        = '⚠ Cannot exceed outstanding balance of PKR '
+    hint.textContent        = 'Warning: Cannot exceed outstanding balance of PKR '
                               + maxAmt.toLocaleString('en-PK', { maximumFractionDigits: 0 }) + '.';
     hint.style.color        = 'var(--danger)';
     return;

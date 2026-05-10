@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Admissions{% endblock %}
-{% block page_title %}🛏️ Admissions{% endblock %}
+{% block page_title %}<i class="fa-solid fa-bed-pulse fa-lg icon-primary"></i> Admissions{% endblock %}
 {% block content %}
 <div class="card">
   <div class="card-header">
     <h2>Patient Admissions</h2>
-    <a href="{{ url_for('add_admission') }}" class="btn btn-primary">➕ Admit Patient</a>
+    <a href="{{ url_for('add_admission') }}" class="btn btn-primary"><i class="fa-solid fa-plus fa-sm"></i> Admit Patient</a>
   </div>
   <div class="table-wrap">
     <table>
@@ -31,9 +31,9 @@
           </td>
           <td>
             {% if a.status=='Active' %}
-              <span class="badge badge-warning">🟡 Active</span>
+              <span class="badge badge-warning"><i class="fa-solid fa-clock fa-sm"></i> Active</span>
             {% else %}
-              <span class="badge badge-success">✓ Discharged</span>
+              <span class="badge badge-success"><i class="fa-solid fa-circle-check fa-sm"></i> Discharged</span>
             {% endif %}
           </td>
           <td>
@@ -41,7 +41,7 @@
             <form method="POST"
                   action="{{ url_for('discharge_patient', aid=a.admission_id) }}"
                   onsubmit="return confirm('Discharge this patient and release the room?')">
-              <button type="submit" class="btn btn-success btn-sm">🏁 Discharge</button>
+              <button type="submit" class="btn btn-success btn-sm"><i class="fa-solid fa-arrow-right-from-bracket fa-sm"></i> Discharge</button>
             </form>
             {% else %}
             <span class="text-muted" style="font-size:11px">—</span>

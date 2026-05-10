@@ -1,0 +1,6 @@
+login=302:/dashboard
+view=200
+add=302, count_before=3, count_after=4, room_id=4
+edit=302, edited_ok=1
+delete_blocked=SKIPPED(no occupied room)
+delete_new=302, new_after_delete=0

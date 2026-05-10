@@ -1,0 +1,6 @@
+login=302:/dashboard
+new_rx_post=302:/doctor/prescriptions/3/add_medicine
+add_medicine_post=302:/doctor/prescriptions/3/view
+view_status=200, contains_medicine=True
+list_status=200, contains_new_id=True
+ownership_block_status=200, denied_text=True

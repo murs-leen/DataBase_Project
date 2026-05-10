@@ -1,14 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Doctors{% endblock %}
-{% block page_title %}🩺 Doctors{% endblock %}
+{% block page_title %}<i class="fa-solid fa-user-doctor fa-lg icon-primary"></i> Doctors{% endblock %}
 {% block content %}
 <div class="card">
   <div class="card-header">
     <h2>Registered Doctors</h2>
     {% if session.get('role')=='Admin' %}
-    <a href="{{ url_for('add_doctor') }}" class="btn btn-primary">＋ Add Doctor</a>
+    <a href="{{ url_for('add_doctor') }}" class="btn btn-primary"><i class="fa-solid fa-plus fa-sm"></i> Add Doctor</a>
     {% endif %}
   </div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+      <div class="alert {% if category == 'danger' %}alert-danger{% else %}alert-success{% endif %}">
+        <i class="fa-solid {% if category == 'danger' %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %} fa-sm"></i>
+        {{ msg }}
+      </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
   <div class="table-wrap">
     <table>
       <thead>
@@ -16,6 +26,7 @@
           <th>ID</th><th>Doctor Name</th><th>Department</th>
           <th>Specialization</th><th>License No.</th>
           <th>Consult Fee</th><th>Available Days</th><th>Status</th>
+          {% if session.get('role')=='Admin' %}<th>Actions</th>{% endif %}
         </tr>
       </thead>
       <tbody>
@@ -33,9 +44,17 @@
               {{ d.status }}
             </span>
           </td>
+          {% if session.get('role')=='Admin' %}
+          <td style="display:flex;gap:8px;">
+            <a href="{{ url_for('edit_doctor', staff_id=d.staff_id) }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-pen-to-square fa-sm"></i> Edit</a>
+            <form method="POST" action="{{ url_for('delete_doctor', staff_id=d.staff_id) }}" onsubmit="return confirm('Delete this doctor?')">
+              <button type="submit" class="btn btn-danger btn-sm"><i class="fa-solid fa-trash fa-sm"></i> Delete</button>
+            </form>
+          </td>
+          {% endif %}
         </tr>
         {% else %}
-        <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">
+        <tr><td colspan="{% if session.get('role')=='Admin' %}9{% else %}8{% endif %}" style="text-align:center;padding:30px;color:var(--text-muted)">
           No doctors registered.
         </td></tr>
         {% endfor %}

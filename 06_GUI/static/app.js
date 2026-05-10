@@ -11,22 +11,28 @@ function showToast(message, type = 'success') {
   const toast = document.createElement('div');
   toast.id = 'hms-toast';
   toast.textContent = message;
+  const tone = type === 'warning'
+    ? { bg: 'rgba(245,158,11,0.2)', border: '#F59E0B' }
+    : type === 'error'
+      ? { bg: 'rgba(239,68,68,0.2)', border: '#ef4444' }
+      : { bg: 'rgba(89,180,138,0.2)', border: '#59B48A' };
   Object.assign(toast.style, {
     position:     'fixed',
     bottom:       '24px',
     right:        '24px',
-    padding:      '12px 20px',
-    borderRadius: '10px',
-    fontSize:     '13px',
+    padding:      '12px 18px',
+    borderRadius: '14px',
+    fontSize:     '14px',
     fontWeight:   '600',
     zIndex:       '9999',
     boxShadow:    '0 8px 32px rgba(0,0,0,0.4)',
-    transition:   'opacity 0.4s ease',
+    transition:   'all 0.25s ease',
     opacity:      '0',
-    background:   type === 'success' ? 'rgba(39,201,122,0.9)'
-                : type === 'error'   ? 'rgba(240,94,106,0.9)'
-                                     : 'rgba(79,125,243,0.9)',
-    color: '#fff'
+    background:   tone.bg,
+    color: '#FFFFFF',
+    border: '1px solid rgba(89,180,138,0.25)',
+    borderLeft: `4px solid ${tone.border}`,
+    backdropFilter: 'blur(16px)'
   });
 
   document.body.appendChild(toast);

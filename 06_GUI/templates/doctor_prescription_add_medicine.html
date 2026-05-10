@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Add Medicine{% endblock %}
+{% block page_title %}<i class="fa-solid fa-pills fa-lg icon-primary"></i> Add Medicine to Prescription{% endblock %}
+{% block content %}
+<div class="card" style="max-width:760px;">
+  <div class="card-header">
+    <h2>Prescription #{{ prescription.prescription_id }}</h2>
+    <a href="{{ url_for('doctor_prescription_view', pid=prescription.prescription_id) }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-eye fa-sm"></i> View</a>
+  </div>
+  {% if error %}
+  <div class="alert alert-danger"><i class="fa-solid fa-triangle-exclamation fa-sm"></i> {{ error }}</div>
+  {% endif %}
+  <form method="POST" class="form-grid">
+    <div class="form-group full">
+      <label>Medicine *</label>
+      <select name="medicine_id" required>
+        <option value="">-- Select Medicine --</option>
+        {% for m in medicines %}
+        <option value="{{ m.medicine_id }}">{{ m.medicine_name }} (Stock: {{ m.stock_quantity }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Dosage *</label>
+      <input type="text" name="dosage" placeholder="e.g. 1 tablet" required>
+    </div>
+    <div class="form-group">
+      <label>Frequency *</label>
+      <input type="text" name="frequency" placeholder="e.g. Twice daily" required>
+    </div>
+    <div class="form-group">
+      <label>Duration (days) *</label>
+      <input type="number" min="1" name="duration" required>
+    </div>
+    <div class="form-group">
+      <label>Quantity *</label>
+      <input type="number" min="1" name="quantity" required>
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus fa-sm"></i> Add Medicine</button>
+  </form>
+</div>
+{% endblock %}

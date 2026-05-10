@@ -1,0 +1,378 @@
+[
+  {
+    "area": "ADMIN",
+    "item": "Login",
+    "route": "/",
+    "sql": "SELECT * FROM USERS WHERE (username=%s OR email=%s) AND password_hash=%s AND is_active=1",
+    "result": "PASS",
+    "detail": "status=302, location=/dashboard"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Dashboard redirect",
+    "route": "/dashboard -> /doctor_dashboard",
+    "sql": "N/A",
+    "result": "PASS",
+    "detail": "status=302, location=/doctor_dashboard"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Dashboard page load",
+    "route": "/doctor_dashboard",
+    "sql": "SELECT SUM(paid_amount)... FROM BILLING ...",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Doctor list view",
+    "route": "/doctors",
+    "sql": "SELECT ... FROM DOCTOR d JOIN STAFF s ... JOIN DEPARTMENT ...",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Doctor add",
+    "route": "/doctors/add",
+    "sql": "INSERT INTO STAFF ...; INSERT INTO DOCTOR ...",
+    "result": "PASS",
+    "detail": "status=302, count_before=1, count_after=2"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Doctor edit",
+    "route": "N/A",
+    "sql": "N/A",
+    "result": "FAIL",
+    "detail": "No edit doctor route in app.py"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Doctor delete",
+    "route": "N/A",
+    "sql": "N/A",
+    "result": "FAIL",
+    "detail": "No delete doctor route in app.py"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Patient list view",
+    "route": "/patients",
+    "sql": "SELECT * FROM PATIENT ...",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Patient add",
+    "route": "/patients/add",
+    "sql": "INSERT INTO PATIENT ...",
+    "result": "PASS",
+    "detail": "status=302, before=0, after=1"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Patient edit",
+    "route": "/patients/edit/1",
+    "sql": "UPDATE PATIENT SET ... WHERE patient_id=%s",
+    "result": "PASS",
+    "detail": "status=302, updated=1"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Patient delete (soft)",
+    "route": "/patients/delete/1",
+    "sql": "UPDATE PATIENT SET status='Inactive' WHERE patient_id=%s",
+    "result": "PASS",
+    "detail": "status=302, inactive=1"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Department Management",
+    "route": "N/A",
+    "sql": "N/A",
+    "result": "FAIL",
+    "detail": "No department CRUD routes"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Room Management",
+    "route": "N/A",
+    "sql": "N/A",
+    "result": "FAIL",
+    "detail": "No room CRUD routes"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Medicine Management",
+    "route": "N/A",
+    "sql": "N/A",
+    "result": "FAIL",
+    "detail": "No medicine CRUD routes"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Staff Management add/edit/delete",
+    "route": "N/A",
+    "sql": "N/A",
+    "result": "FAIL",
+    "detail": "Only /staff list route exists"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Staff list",
+    "route": "/staff",
+    "sql": "SELECT ... FROM STAFF LEFT JOIN ...",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Billing access",
+    "route": "/billing",
+    "sql": "SELECT ... FROM BILLING JOIN PATIENT ...",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "ADMIN",
+    "item": "Logout",
+    "route": "/logout",
+    "sql": "session.clear()",
+    "result": "PASS",
+    "detail": "status=302"
+  },
+  {
+    "area": "DOCTOR",
+    "item": "Login",
+    "route": "/",
+    "sql": "SELECT USERS...",
+    "result": "PASS",
+    "detail": "status=302, location=/dashboard"
+  },
+  {
+    "area": "DOCTOR",
+    "item": "Dashboard load",
+    "route": "/doctor_dashboard",
+    "sql": "BILLING aggregate queries (not doctor-filtered)",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "DOCTOR",
+    "item": "Dashboard own-data filter",
+    "route": "/doctor_dashboard",
+    "sql": "No WHERE doctor/staff filter exists",
+    "result": "FAIL",
+    "detail": "Queries aggregate all BILLING data globally"
+  },
+  {
+    "area": "DOCTOR",
+    "item": "Appointments view",
+    "route": "/appointments",
+    "sql": "SELECT ... FROM APPOINTMENT ... (no doctor filter)",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "DOCTOR",
+    "item": "Appointments own-only",
+    "route": "/appointments",
+    "sql": "No WHERE a.doctor_id = session doctor",
+    "result": "FAIL",
+    "detail": "Doctor can see all appointments"
+  },
+  {
+    "area": "DOCTOR",
+    "item": "Prescription module",
+    "route": "N/A",
+    "sql": "N/A",
+    "result": "FAIL",
+    "detail": "No doctor prescription create/view routes"
+  },
+  {
+    "area": "DOCTOR",
+    "item": "Billing access",
+    "route": "/billing",
+    "sql": "doctor_required allows Doctor/Admin",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "DOCTOR",
+    "item": "Blocked route /staff",
+    "route": "/staff",
+    "sql": "admin_required/staff_required",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "DOCTOR",
+    "item": "Blocked route /doctors/add",
+    "route": "/doctors/add",
+    "sql": "admin_required/staff_required",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "DOCTOR",
+    "item": "Blocked route /patients/delete/1",
+    "route": "/patients/delete/1",
+    "sql": "admin_required/staff_required",
+    "result": "FAIL",
+    "detail": "status=405"
+  },
+  {
+    "area": "DOCTOR",
+    "item": "Logout",
+    "route": "/logout",
+    "sql": "session.clear()",
+    "result": "PASS",
+    "detail": "executed"
+  },
+  {
+    "area": "STAFF",
+    "item": "Login",
+    "route": "/",
+    "sql": "SELECT USERS...",
+    "result": "PASS",
+    "detail": "status=302, location=/dashboard"
+  },
+  {
+    "area": "STAFF",
+    "item": "Dashboard load",
+    "route": "/staff_dashboard",
+    "sql": "SELECT patient_id..., SELECT medicine_id...",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "STAFF",
+    "item": "Patient registration",
+    "route": "/staff/register_patient",
+    "sql": "INSERT INTO PATIENT ...",
+    "result": "PASS",
+    "detail": "status=200, before=1, after=2, body={\n  \"message\": \"Patient registered successfully.\",\n  \"status\": \"success\"\n}\n"
+  },
+  {
+    "area": "STAFF",
+    "item": "Appointment booking",
+    "route": "/appointments/add",
+    "sql": "INSERT INTO APPOINTMENT ...",
+    "result": "PASS",
+    "detail": "status=302, before=0, after=1"
+  },
+  {
+    "area": "STAFF",
+    "item": "Admission create",
+    "route": "/admissions/add",
+    "sql": "INSERT INTO ADMISSION ...; UPDATE ROOM ...; INSERT INTO BILLING ...",
+    "result": "PASS",
+    "detail": "status=302, before=0, after=1, room_occupied=1"
+  },
+  {
+    "area": "STAFF",
+    "item": "Admission discharge",
+    "route": "/admissions/discharge/1",
+    "sql": "UPDATE ADMISSION ...; UPDATE ROOM ...",
+    "result": "PASS",
+    "detail": "status=302, room_available=1"
+  },
+  {
+    "area": "STAFF",
+    "item": "Medicine dispense",
+    "route": "/staff/dispense",
+    "sql": "UPDATE MEDICINE ...; INSERT PRESCRIPTION...; INSERT PRESCRIPTION_DETAILS...; UPDATE/INSERT BILLING...",
+    "result": "PASS",
+    "detail": "status=200, before_stock=500, after_stock=498, body={\n  \"message\": \"Medicine dispensed successfully.\",\n  \"status\": \"success\"\n}\n"
+  },
+  {
+    "area": "STAFF",
+    "item": "Billing access",
+    "route": "/billing",
+    "sql": "doctor_required",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "STAFF",
+    "item": "Billing blocked expectation",
+    "route": "/billing",
+    "sql": "doctor_required",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "STAFF",
+    "item": "Blocked route /admin_dashboard",
+    "route": "/admin_dashboard",
+    "sql": "decorators / missing route",
+    "result": "PASS",
+    "detail": "status=404"
+  },
+  {
+    "area": "STAFF",
+    "item": "Blocked route /doctors/add",
+    "route": "/doctors/add",
+    "sql": "decorators / missing route",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "STAFF",
+    "item": "Blocked route /doctor_dashboard",
+    "route": "/doctor_dashboard",
+    "sql": "decorators / missing route",
+    "result": "PASS",
+    "detail": "status=200"
+  },
+  {
+    "area": "STAFF",
+    "item": "Logout",
+    "route": "/logout",
+    "sql": "session.clear()",
+    "result": "PASS",
+    "detail": "executed"
+  },
+  {
+    "area": "SECURITY",
+    "item": "Logged-out protection /dashboard",
+    "route": "/dashboard",
+    "sql": "login_required/admin_required/doctor_required/staff_required",
+    "result": "PASS",
+    "detail": "status=302, location=/"
+  },
+  {
+    "area": "SECURITY",
+    "item": "Logged-out protection /doctor_dashboard",
+    "route": "/doctor_dashboard",
+    "sql": "login_required/admin_required/doctor_required/staff_required",
+    "result": "PASS",
+    "detail": "status=302, location=/"
+  },
+  {
+    "area": "SECURITY",
+    "item": "Logged-out protection /staff_dashboard",
+    "route": "/staff_dashboard",
+    "sql": "login_required/admin_required/doctor_required/staff_required",
+    "result": "PASS",
+    "detail": "status=302, location=/"
+  },
+  {
+    "area": "SECURITY",
+    "item": "Logged-out protection /patients",
+    "route": "/patients",
+    "sql": "login_required/admin_required/doctor_required/staff_required",
+    "result": "PASS",
+    "detail": "status=302, location=/"
+  },
+  {
+    "area": "SECURITY",
+    "item": "Logged-out protection /appointments",
+    "route": "/appointments",
+    "sql": "login_required/admin_required/doctor_required/staff_required",
+    "result": "PASS",
+    "detail": "status=302, location=/"
+  }
+]

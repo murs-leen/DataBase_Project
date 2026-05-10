@@ -1,11 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Staff{% endblock %}
-{% block page_title %}👔 Staff Management{% endblock %}
+{% block page_title %}<i class="fa-solid fa-people-group fa-lg icon-primary"></i> Staff Management{% endblock %}
 {% block content %}
 <div class="card">
   <div class="card-header">
     <h2>All Hospital Staff</h2>
+    <a href="{{ url_for('add_staff') }}" class="btn btn-primary"><i class="fa-solid fa-plus fa-sm"></i> Add Staff</a>
   </div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+      <div class="alert {% if category == 'danger' %}alert-danger{% else %}alert-success{% endif %}">
+        <i class="fa-solid {% if category == 'danger' %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %} fa-sm"></i>
+        {{ msg }}
+      </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
   <div class="table-wrap">
     <table>
       <thead>
@@ -13,6 +24,7 @@
           <th>ID</th><th>Name</th><th>Type</th><th>Department / Ward</th>
           <th>Specialization</th><th>Phone</th><th>Shift</th>
           <th>Salary</th><th>Hire Date</th><th>Status</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -22,13 +34,13 @@
           <td><strong>{{ s.name }}</strong></td>
           <td>
             {% if s.staff_type=='Doctor' %}
-              <span class="badge badge-primary">🩺 Doctor</span>
+              <span class="badge badge-primary"><i class="fa-solid fa-user-doctor fa-sm"></i> Doctor</span>
             {% elif s.staff_type=='Nurse' %}
-              <span class="badge badge-success">💉 Nurse</span>
+              <span class="badge badge-success"><i class="fa-solid fa-heart-pulse fa-sm"></i> Nurse</span>
             {% elif s.staff_type=='Technician' %}
-              <span class="badge badge-warning">🔧 Technician</span>
+              <span class="badge badge-warning"><i class="fa-solid fa-screwdriver-wrench fa-sm"></i> Technician</span>
             {% else %}
-              <span class="badge badge-muted">🖥 Admin</span>
+              <span class="badge badge-muted"><i class="fa-solid fa-user-shield fa-sm"></i> Admin</span>
             {% endif %}
           </td>
           <td>
@@ -46,9 +58,15 @@
               {{ s.status }}
             </span>
           </td>
+          <td style="display:flex;gap:8px;">
+            <a href="{{ url_for('edit_staff', staff_id=s.staff_id) }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-pen-to-square fa-sm"></i> Edit</a>
+            <form method="POST" action="{{ url_for('delete_staff', staff_id=s.staff_id) }}" onsubmit="return confirm('Delete this staff member?')">
+              <button type="submit" class="btn btn-danger btn-sm"><i class="fa-solid fa-trash fa-sm"></i> Delete</button>
+            </form>
+          </td>
         </tr>
         {% else %}
-        <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text-muted)">
+        <tr><td colspan="11" style="text-align:center;padding:30px;color:var(--text-muted)">
           No staff records.
         </td></tr>
         {% endfor %}

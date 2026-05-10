@@ -1,15 +1,16 @@
 """
-Hospital Management System - Flask Backend
+ClinicFlow - Clinic Management System Backend
 ==========================================
 Install requirements: pip install flask mysql-connector-python
 Run: python app.py
 """
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, flash
 import mysql.connector
 import hashlib
 import io
 import csv
+import os
 from datetime import date, datetime
 from functools import wraps
 
@@ -58,6 +59,15 @@ def execute_db(sql, params=()):
 def hash_pw(pw):
     return hashlib.sha256(pw.encode()).hexdigest()
 
+
+def get_logged_in_doctor_id():
+    """Resolve current doctor's doctor_id via session staff_id."""
+    staff_id = session.get("staff_id")
+    if not staff_id:
+        return None
+    row = query_db("SELECT doctor_id FROM DOCTOR WHERE staff_id=%s", (staff_id,), fetchone=True)
+    return row["doctor_id"] if row else None
+
 # ─────────────────────────────────────────────
 # AUTH DECORATORS
 # ─────────────────────────────────────────────
@@ -79,6 +89,38 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
+def doctor_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        if session.get("role") not in ["Admin", "Doctor"]:
+            return render_template("error.html", msg="Doctor access required.")
+        return f(*args, **kwargs)
+    return decorated
+
+def staff_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        if session.get("role") not in ["Admin", "Staff"]:
+            return render_template("error.html", msg="Staff access required.")
+        return f(*args, **kwargs)
+    return decorated
+
+
+def doctor_or_staff_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        if session.get("role") not in ["Doctor", "Staff", "Admin"]:
+            flash("Access denied.", "danger")
+            return redirect(url_for("dashboard"))
+        return f(*args, **kwargs)
+    return decorated
+
 # ─────────────────────────────────────────────
 # AUTH ROUTES
 # ─────────────────────────────────────────────
@@ -86,19 +128,53 @@ def admin_required(f):
 def login():
     error = None
     if request.method == "POST":
-        username = request.form.get("username","").strip()
+        username = request.form.get("email","").strip()  # Form uses email now
         password = request.form.get("password","")
+        # For simplicity, fallback to username if email fails, as DB uses username
         user = query_db(
-            "SELECT * FROM USERS WHERE username=%s AND password_hash=%s AND is_active=1",
-            (username, hash_pw(password)), fetchone=True
+            "SELECT * FROM USERS WHERE (username=%s OR email=%s) AND password_hash=%s AND is_active=1",
+            (username, username, hash_pw(password)), fetchone=True
         )
         if user:
             session["user_id"]  = user["user_id"]
             session["username"] = user["username"]
+            session["email"]    = user["email"]
             session["role"]     = user["role"]
+            session["staff_id"] = user.get("staff_id")
             return redirect(url_for("dashboard"))
-        error = "Invalid username or password."
+        error = "Invalid email or password."
     return render_template("login.html", error=error)
+
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    error = None
+    if request.method == "POST":
+        role = request.form.get("role")
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm", "")
+        
+        if not role or role not in ["Doctor", "Staff"]:
+            error = "Please select a valid role."
+        elif password != confirm:
+            error = "Passwords do not match."
+        else:
+            try:
+                execute_db(
+                    "INSERT INTO USERS (username, email, password_hash, role) VALUES (%s, %s, %s, %s)",
+                    (email.split('@')[0] + str(hash(email))[-4:], email, hash_pw(password), role)
+                )
+                user = query_db("SELECT * FROM USERS WHERE email=%s", (email,), fetchone=True)
+                session["user_id"] = user["user_id"]
+                session["username"] = user["username"]
+                session["email"] = user["email"]
+                session["role"] = user["role"]
+                return redirect(url_for("dashboard"))
+            except Exception as e:
+                error = "Account already exists or database error."
+                
+    return render_template("signup.html", error=error)
 
 @app.route("/logout")
 def logout():
@@ -111,54 +187,292 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    total_patients   = query_db("SELECT COUNT(*) AS c FROM PATIENT WHERE status='Active'", fetchone=True)["c"]
-    total_doctors    = query_db("SELECT COUNT(*) AS c FROM DOCTOR", fetchone=True)["c"]
-    active_admissions= query_db("SELECT COUNT(*) AS c FROM ADMISSION WHERE status='Active'", fetchone=True)["c"]
-    monthly_revenue  = query_db(
-        "SELECT COALESCE(SUM(paid_amount),0) AS r FROM BILLING WHERE MONTH(bill_date)=MONTH(CURDATE()) AND YEAR(bill_date)=YEAR(CURDATE())",
-        fetchone=True)["r"]
+    role = session.get("role")
+    if role in ["Admin", "Doctor"]:
+        return redirect(url_for("doctor_dashboard"))
+    elif role == "Staff":
+        return redirect(url_for("staff_dashboard"))
+    else:
+        return render_template("error.html", msg="Invalid role.")
 
-    # Chart data: patients per department
-    dept_data = query_db("""
-        SELECT dep.dept_name, COUNT(DISTINCT a.patient_id) AS cnt
-        FROM DEPARTMENT dep
-        LEFT JOIN DOCTOR d   ON d.dept_id   = dep.dept_id
-        LEFT JOIN APPOINTMENT a ON a.doctor_id = d.doctor_id
-        GROUP BY dep.dept_id, dep.dept_name
-        ORDER BY cnt DESC LIMIT 10
-    """)
+@app.route("/doctor_dashboard")
+@doctor_required
+def doctor_dashboard():
+    if session.get("role") == "Doctor":
+        doctor_id = get_logged_in_doctor_id()
+        if not doctor_id:
+            return render_template("error.html", msg="Doctor profile not linked to staff record.")
 
-    # Chart data: revenue per month (last 6 months)
-    rev_data = query_db("""
-        SELECT DATE_FORMAT(bill_date,'%b %Y') AS month_label,
-               SUM(paid_amount) AS revenue
-        FROM BILLING
-        WHERE bill_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-        GROUP BY YEAR(bill_date), MONTH(bill_date), DATE_FORMAT(bill_date,'%b %Y')
-        ORDER BY YEAR(bill_date), MONTH(bill_date)
-    """)
+        # Scoped KPIs for the logged-in doctor only.
+        today_rev = query_db(
+            "SELECT COUNT(*) AS r FROM APPOINTMENT WHERE doctor_id=%s AND appointment_date = CURDATE()",
+            (doctor_id,), fetchone=True)["r"]
+        yesterday_rev = query_db(
+            "SELECT COUNT(*) AS r FROM APPOINTMENT WHERE doctor_id=%s AND appointment_date = DATE_SUB(CURDATE(), INTERVAL 1 DAY)",
+            (doctor_id,), fetchone=True)["r"]
+        monthly_rev = query_db(
+            "SELECT COUNT(DISTINCT patient_id) AS r FROM APPOINTMENT WHERE doctor_id=%s",
+            (doctor_id,), fetchone=True)["r"]
+        total_rev = query_db(
+            "SELECT COUNT(*) AS r FROM PRESCRIPTION WHERE doctor_id=%s",
+            (doctor_id,), fetchone=True)["r"]
+        seven_day_rev = query_db("""
+            SELECT DATE_FORMAT(appointment_date, '%b %d') as date_label,
+                   COUNT(*) as daily_revenue
+            FROM APPOINTMENT
+            WHERE doctor_id=%s
+              AND appointment_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+            GROUP BY appointment_date
+            ORDER BY appointment_date ASC
+        """, (doctor_id,))
+    else:
+        # Admin view remains global.
+        today_rev = query_db(
+            "SELECT COALESCE(SUM(paid_amount), 0) AS r FROM BILLING WHERE payment_date = CURDATE() AND payment_status IN ('Paid', 'Partial')",
+            fetchone=True)["r"]
+        yesterday_rev = query_db(
+            "SELECT COALESCE(SUM(paid_amount), 0) AS r FROM BILLING WHERE payment_date = DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND payment_status IN ('Paid', 'Partial')",
+            fetchone=True)["r"]
+        monthly_rev = query_db(
+            "SELECT COALESCE(SUM(paid_amount), 0) AS r FROM BILLING WHERE MONTH(payment_date) = MONTH(CURDATE()) AND YEAR(payment_date) = YEAR(CURDATE()) AND payment_status IN ('Paid', 'Partial')",
+            fetchone=True)["r"]
+        total_rev = query_db(
+            "SELECT COALESCE(SUM(paid_amount), 0) AS r FROM BILLING WHERE payment_status IN ('Paid', 'Partial')",
+            fetchone=True)["r"]
+        seven_day_rev = query_db("""
+            SELECT DATE_FORMAT(payment_date, '%b %d') as date_label, COALESCE(SUM(paid_amount), 0) as daily_revenue
+            FROM BILLING 
+            WHERE payment_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+              AND payment_status IN ('Paid', 'Partial')
+            GROUP BY payment_date
+            ORDER BY payment_date ASC
+        """)
 
-    # Top 10 patients by billing
-    top_patients = query_db("""
-        SELECT CONCAT(p.first_name,' ',p.last_name) AS name,
-               p.phone, p.blood_group,
-               SUM(b.total_amount) AS total_billed,
-               SUM(b.paid_amount)  AS total_paid,
-               SUM(b.total_amount - b.paid_amount) AS balance
-        FROM PATIENT p JOIN BILLING b ON b.patient_id=p.patient_id
-        GROUP BY p.patient_id, p.first_name, p.last_name, p.phone, p.blood_group
-        ORDER BY total_billed DESC LIMIT 10
-    """)
-
-    return render_template("dashboard.html",
-        total_patients=total_patients,
-        total_doctors=total_doctors,
-        active_admissions=active_admissions,
-        monthly_revenue=monthly_revenue,
-        dept_data=dept_data,
-        rev_data=rev_data,
-        top_patients=top_patients
+    return render_template("doctor_dashboard.html",
+        today_rev=today_rev,
+        yesterday_rev=yesterday_rev,
+        monthly_rev=monthly_rev,
+        total_rev=total_rev,
+        seven_day_rev=seven_day_rev
     )
+
+
+@app.route("/doctor/prescriptions")
+@doctor_required
+def doctor_prescriptions():
+    doctor_id = get_logged_in_doctor_id()
+    if session.get("role") == "Doctor" and not doctor_id:
+        return render_template("error.html", msg="Doctor profile not linked to staff record.")
+
+    if session.get("role") == "Admin":
+        rows = query_db("""
+            SELECT pr.prescription_id, pr.patient_id, pr.doctor_id, pr.appointment_id,
+                   pr.prescription_date, pr.notes,
+                   CONCAT(p.first_name,' ',p.last_name) AS patient_name
+            FROM PRESCRIPTION pr
+            JOIN PATIENT p ON p.patient_id = pr.patient_id
+            ORDER BY pr.prescription_date DESC, pr.prescription_id DESC
+        """)
+    else:
+        rows = query_db("""
+            SELECT pr.prescription_id, pr.patient_id, pr.doctor_id, pr.appointment_id,
+                   pr.prescription_date, pr.notes,
+                   CONCAT(p.first_name,' ',p.last_name) AS patient_name
+            FROM PRESCRIPTION pr
+            JOIN PATIENT p ON p.patient_id = pr.patient_id
+            WHERE pr.doctor_id = %s
+            ORDER BY pr.prescription_date DESC, pr.prescription_id DESC
+        """, (doctor_id,))
+
+    return render_template("doctor_prescriptions.html", prescriptions=rows)
+
+
+@app.route("/doctor/prescriptions/new", methods=["GET", "POST"])
+@doctor_required
+def doctor_prescription_new():
+    doctor_id = get_logged_in_doctor_id()
+    if session.get("role") == "Doctor" and not doctor_id:
+        return render_template("error.html", msg="Doctor profile not linked to staff record.")
+
+    if session.get("role") == "Admin":
+        patients = query_db("""
+            SELECT DISTINCT p.patient_id, CONCAT(p.first_name,' ',p.last_name) AS name
+            FROM PATIENT p
+            WHERE p.status='Active'
+            ORDER BY p.first_name, p.last_name
+        """)
+    else:
+        patients = query_db("""
+            SELECT DISTINCT p.patient_id, CONCAT(p.first_name,' ',p.last_name) AS name
+            FROM PATIENT p
+            JOIN APPOINTMENT a ON a.patient_id = p.patient_id
+            WHERE p.status='Active'
+              AND a.doctor_id = %s
+            ORDER BY name
+        """, (doctor_id,))
+
+    error = None
+    if request.method == "POST":
+        patient_id = request.form.get("patient_id")
+        diagnosis = request.form.get("diagnosis", "").strip()
+        notes = request.form.get("notes", "").strip()
+
+        if not patient_id:
+            error = "Please select a patient."
+        elif session.get("role") == "Doctor":
+            allowed = query_db("""
+                SELECT COUNT(*) AS c
+                FROM APPOINTMENT
+                WHERE doctor_id=%s AND patient_id=%s
+            """, (doctor_id, patient_id), fetchone=True)["c"]
+            if allowed == 0:
+                error = "Selected patient is not assigned to this doctor."
+
+        if not error:
+            combined_notes = f"Diagnosis: {diagnosis}\nNotes: {notes}".strip()
+            new_id = execute_db("""
+                INSERT INTO PRESCRIPTION (patient_id, doctor_id, prescription_date, notes)
+                VALUES (%s, %s, CURDATE(), %s)
+            """, (patient_id, doctor_id if session.get("role") == "Doctor" else doctor_id or 1, combined_notes))
+            return redirect(url_for("doctor_prescription_add_medicine", pid=new_id))
+
+    return render_template("doctor_prescription_new.html", patients=patients, error=error)
+
+
+@app.route("/doctor/prescriptions/<int:pid>/add_medicine", methods=["GET", "POST"])
+@doctor_required
+def doctor_prescription_add_medicine(pid):
+    doctor_id = get_logged_in_doctor_id()
+    rx = query_db("SELECT * FROM PRESCRIPTION WHERE prescription_id=%s", (pid,), fetchone=True)
+    if not rx:
+        return render_template("error.html", msg="Prescription not found.")
+
+    if session.get("role") == "Doctor" and rx["doctor_id"] != doctor_id:
+        return render_template("error.html", msg="Access denied for this prescription.")
+
+    meds = query_db("SELECT medicine_id, medicine_name, stock_quantity FROM MEDICINE ORDER BY medicine_name")
+    error = None
+    if request.method == "POST":
+        medicine_id = request.form.get("medicine_id")
+        dosage = request.form.get("dosage", "").strip()
+        frequency = request.form.get("frequency", "").strip()
+        duration_days = request.form.get("duration", "").strip()
+        quantity = request.form.get("quantity", "").strip()
+
+        if not medicine_id or not dosage or not frequency or not duration_days or not quantity:
+            error = "All medicine fields are required."
+        else:
+            dosage_with_frequency = f"{dosage} ({frequency})"
+            execute_db("""
+                INSERT INTO PRESCRIPTION_DETAILS (prescription_id, medicine_id, dosage, duration_days, quantity)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (pid, medicine_id, dosage_with_frequency, duration_days, quantity))
+            return redirect(url_for("doctor_prescription_view", pid=pid))
+
+    return render_template("doctor_prescription_add_medicine.html", prescription=rx, medicines=meds, error=error)
+
+
+@app.route("/doctor/prescriptions/<int:pid>/view")
+@doctor_required
+def doctor_prescription_view(pid):
+    doctor_id = get_logged_in_doctor_id()
+    rx = query_db("""
+        SELECT pr.*, CONCAT(p.first_name,' ',p.last_name) AS patient_name
+        FROM PRESCRIPTION pr
+        JOIN PATIENT p ON p.patient_id = pr.patient_id
+        WHERE pr.prescription_id=%s
+    """, (pid,), fetchone=True)
+    if not rx:
+        return render_template("error.html", msg="Prescription not found.")
+
+    if session.get("role") == "Doctor" and rx["doctor_id"] != doctor_id:
+        return render_template("error.html", msg="Access denied for this prescription.")
+
+    details = query_db("""
+        SELECT pd.detail_id, pd.prescription_id, pd.medicine_id, pd.dosage,
+               pd.duration_days, pd.quantity, m.medicine_name, m.unit_price
+        FROM PRESCRIPTION_DETAILS pd
+        JOIN MEDICINE m ON m.medicine_id = pd.medicine_id
+        WHERE pd.prescription_id = %s
+        ORDER BY pd.detail_id
+    """, (pid,))
+    return render_template("doctor_prescription_view.html", rx=rx, details=details)
+
+@app.route("/staff_dashboard")
+@staff_required
+def staff_dashboard():
+    patients_list = query_db("SELECT patient_id, CONCAT(first_name, ' ', last_name) AS name FROM PATIENT WHERE status='Active' ORDER BY first_name")
+    medicines_list = query_db("SELECT medicine_id, medicine_name, stock_quantity FROM MEDICINE ORDER BY medicine_name")
+    return render_template("staff_dashboard.html", patients=patients_list, medicines=medicines_list)
+
+@app.route("/staff/dispense", methods=["POST"])
+@staff_required
+def staff_dispense():
+    patient_id = request.form.get("patient_id")
+    medicine_id = request.form.get("medicine_id")
+    quantity = int(request.form.get("quantity", 0))
+    
+    conn = get_db()
+    cur = conn.cursor(dictionary=True)
+    try:
+        conn.start_transaction()
+        cur.execute("SELECT stock_quantity, unit_price FROM MEDICINE WHERE medicine_id = %s FOR UPDATE", (medicine_id,))
+        med = cur.fetchone()
+        
+        if not med:
+            conn.rollback()
+            return jsonify({"status": "error", "message": "Medicine not found."})
+            
+        if med["stock_quantity"] < quantity:
+            conn.rollback()
+            return jsonify({"status": "error", "message": f"Insufficient Stock. Only {med['stock_quantity']} units available."})
+            
+        cur.execute("UPDATE MEDICINE SET stock_quantity = stock_quantity - %s WHERE medicine_id = %s", (quantity, medicine_id))
+        
+        # We need to find a doctor to assign to the prescription. Let's get any active doctor for simplicity, or dummy it if allowed.
+        # Actually, let's see if we can get doctor_id from session, or default to 1
+        cur.execute("SELECT doctor_id FROM DOCTOR LIMIT 1")
+        doc = cur.fetchone()
+        doc_id = doc['doctor_id'] if doc else 1
+        
+        cur.execute("INSERT INTO PRESCRIPTION (patient_id, doctor_id, prescription_date, notes) VALUES (%s, %s, CURDATE(), 'Staff Dispensed')", (patient_id, doc_id))
+        rx_id = cur.lastrowid
+        cur.execute("INSERT INTO PRESCRIPTION_DETAILS (prescription_id, medicine_id, dosage, duration_days, quantity) VALUES (%s, %s, 'Dispensed', 1, %s)", (rx_id, medicine_id, quantity))
+        
+        # Add to patient's billing
+        total_cost = med["unit_price"] * quantity
+        cur.execute("SELECT bill_id FROM BILLING WHERE patient_id = %s AND payment_status != 'Paid' LIMIT 1", (patient_id,))
+        bill = cur.fetchone()
+        if bill:
+            cur.execute("UPDATE BILLING SET total_amount = total_amount + %s, payment_status = 'Pending' WHERE bill_id = %s", (total_cost, bill['bill_id']))
+        else:
+            cur.execute("INSERT INTO BILLING (patient_id, total_amount, paid_amount, bill_date, payment_status) VALUES (%s, %s, 0, CURDATE(), 'Pending')", (patient_id, total_cost))
+            
+        conn.commit()
+        return jsonify({"status": "success", "message": "Medicine dispensed successfully."})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"status": "error", "message": str(e)})
+    finally:
+        conn.close()
+
+# ─────────────────────────────────────────────
+# STAFF PATIENT REGISTRATION
+# ─────────────────────────────────────────────
+@app.route("/staff/register_patient", methods=["POST"])
+@staff_required
+def staff_register_patient():
+    f = request.form
+    try:
+        execute_db("""
+            INSERT INTO PATIENT
+                (first_name,last_name,date_of_birth,gender,phone,email,address,blood_group)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (f["first_name"], f["last_name"], f["dob"], f["gender"],
+              f["phone"], f.get("email") or None, f["address"], f["blood_group"]))
+        return jsonify({"status": "success", "message": "Patient registered successfully."})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
 
 # ─────────────────────────────────────────────
 # PATIENT CRUD
@@ -167,7 +481,33 @@ def dashboard():
 @login_required
 def patients():
     search = request.args.get("q","").strip()
-    if search:
+    if session.get("role") == "Doctor":
+        doctor_id = get_logged_in_doctor_id()
+        if not doctor_id:
+            rows = []
+        elif search:
+            rows = query_db("""
+                SELECT DISTINCT p.*
+                FROM PATIENT p
+                JOIN APPOINTMENT a ON p.patient_id = a.patient_id
+                WHERE p.status='Active'
+                  AND a.doctor_id=%s
+                  AND (
+                    p.first_name LIKE %s OR p.last_name LIKE %s
+                    OR p.phone LIKE %s OR CAST(p.patient_id AS CHAR) LIKE %s
+                  )
+                ORDER BY p.patient_id DESC
+            """, (doctor_id, f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"))
+        else:
+            rows = query_db("""
+                SELECT DISTINCT p.*
+                FROM PATIENT p
+                JOIN APPOINTMENT a ON p.patient_id = a.patient_id
+                WHERE p.status='Active'
+                  AND a.doctor_id=%s
+                ORDER BY p.patient_id DESC
+            """, (doctor_id,))
+    elif search:
         rows = query_db("""
             SELECT * FROM PATIENT
             WHERE status='Active' AND (
@@ -229,7 +569,7 @@ def delete_patient(pid):
 @login_required
 def doctors():
     rows = query_db("""
-        SELECT d.doctor_id, CONCAT(s.first_name,' ',s.last_name) AS name,
+        SELECT d.doctor_id, d.staff_id, CONCAT(s.first_name,' ',s.last_name) AS name,
                dep.dept_name, d.specialization, d.license_number,
                d.consultation_fee, d.available_days, s.status
         FROM DOCTOR d
@@ -265,25 +605,383 @@ def add_doctor():
             error = f"Error: {e}"
     return render_template("doctor_form.html", doctor=None, depts=depts, error=error, action="Add")
 
+
+@app.route("/doctors/edit/<int:staff_id>", methods=["GET", "POST"])
+@admin_required
+def edit_doctor(staff_id):
+    depts = query_db("SELECT * FROM DEPARTMENT ORDER BY dept_name")
+    doctor = query_db("""
+        SELECT s.staff_id, s.first_name, s.last_name, s.phone, s.email, s.hire_date, s.salary, s.shift, s.status,
+               d.doctor_id, d.dept_id, d.specialization, d.license_number, d.consultation_fee, d.available_days
+        FROM STAFF s
+        JOIN DOCTOR d ON s.staff_id = d.staff_id
+        WHERE s.staff_id=%s
+    """, (staff_id,), fetchone=True)
+    if not doctor:
+        flash("Doctor not found.", "danger")
+        return redirect(url_for("doctors"))
+
+    error = None
+    if request.method == "POST":
+        f = request.form
+        try:
+            execute_db("""
+                UPDATE STAFF
+                SET first_name=%s, last_name=%s, phone=%s, salary=%s, shift=%s, status=%s
+                WHERE staff_id=%s
+            """, (
+                f["first_name"], f["last_name"], f["phone"], f["salary"], f["shift"], f["status"], staff_id
+            ))
+            execute_db("""
+                UPDATE DOCTOR
+                SET dept_id=%s, specialization=%s, license_number=%s, consultation_fee=%s, available_days=%s
+                WHERE staff_id=%s
+            """, (
+                f["dept_id"], f["specialization"], f["license_number"], f["consultation_fee"], f["available_days"], staff_id
+            ))
+            if f.get("email"):
+                execute_db("UPDATE STAFF SET email=%s WHERE staff_id=%s", (f["email"], staff_id))
+            return redirect(url_for("doctors"))
+        except Exception as e:
+            error = f"Error: {e}"
+            doctor = {**doctor, **f}
+
+    return render_template("doctor_form.html", doctor=doctor, depts=depts, error=error, action="Edit")
+
+
+@app.route("/doctors/delete/<int:staff_id>", methods=["POST"])
+@admin_required
+def delete_doctor(staff_id):
+    row = query_db("SELECT doctor_id FROM DOCTOR WHERE staff_id=%s", (staff_id,), fetchone=True)
+    if not row:
+        flash("Doctor not found.", "danger")
+        return redirect(url_for("doctors"))
+    doctor_id = row["doctor_id"]
+
+    active_count = query_db("""
+        SELECT COUNT(*) AS c
+        FROM APPOINTMENT
+        WHERE doctor_id=%s
+          AND status NOT IN ('Completed','Cancelled')
+    """, (doctor_id,), fetchone=True)["c"]
+    if active_count > 0:
+        flash("Cannot delete doctor: active appointments exist.", "danger")
+        return redirect(url_for("doctors"))
+
+    try:
+        execute_db("DELETE FROM DOCTOR WHERE staff_id=%s", (staff_id,))
+        execute_db("DELETE FROM USERS WHERE staff_id=%s", (staff_id,))
+        execute_db("DELETE FROM STAFF WHERE staff_id=%s", (staff_id,))
+    except Exception as e:
+        flash(f"Doctor delete blocked by dependent records: {e}", "danger")
+        return redirect(url_for("doctors"))
+
+    return redirect(url_for("doctors"))
+
+
+# ─────────────────────────────────────────────
+# DEPARTMENT CRUD (ADMIN)
+# ─────────────────────────────────────────────
+@app.route("/departments")
+@admin_required
+def departments():
+    rows = query_db("SELECT * FROM DEPARTMENT ORDER BY dept_name")
+    return render_template("departments.html", departments=rows, form_mode="list", form_data=None, error=None)
+
+
+@app.route("/departments/add", methods=["GET", "POST"])
+@admin_required
+def add_department():
+    if request.method == "POST":
+        f = request.form
+        try:
+            execute_db("""
+                INSERT INTO DEPARTMENT (dept_name, location, phone_ext, description)
+                VALUES (%s, %s, %s, %s)
+            """, (
+                f.get("dept_name", "").strip(),
+                f.get("location", "").strip(),
+                f.get("phone_ext", "").strip() or None,
+                f.get("description", "").strip() or None
+            ))
+            return redirect(url_for("departments"))
+        except Exception as e:
+            rows = query_db("SELECT * FROM DEPARTMENT ORDER BY dept_name")
+            return render_template("departments.html", departments=rows, form_mode="add", form_data=f, error=f"Error: {e}")
+
+    rows = query_db("SELECT * FROM DEPARTMENT ORDER BY dept_name")
+    return render_template("departments.html", departments=rows, form_mode="add", form_data=None, error=None)
+
+
+@app.route("/departments/edit/<int:dept_id>", methods=["GET", "POST"])
+@admin_required
+def edit_department(dept_id):
+    dept = query_db("SELECT * FROM DEPARTMENT WHERE dept_id=%s", (dept_id,), fetchone=True)
+    if not dept:
+        flash("Department not found.", "danger")
+        return redirect(url_for("departments"))
+
+    if request.method == "POST":
+        f = request.form
+        try:
+            execute_db("""
+                UPDATE DEPARTMENT
+                SET dept_name=%s, location=%s, phone_ext=%s, description=%s
+                WHERE dept_id=%s
+            """, (
+                f.get("dept_name", "").strip(),
+                f.get("location", "").strip(),
+                f.get("phone_ext", "").strip() or None,
+                f.get("description", "").strip() or None,
+                dept_id
+            ))
+            return redirect(url_for("departments"))
+        except Exception as e:
+            rows = query_db("SELECT * FROM DEPARTMENT ORDER BY dept_name")
+            return render_template("departments.html", departments=rows, form_mode="edit", form_data={**dept, **f}, error=f"Error: {e}", edit_id=dept_id)
+
+    rows = query_db("SELECT * FROM DEPARTMENT ORDER BY dept_name")
+    return render_template("departments.html", departments=rows, form_mode="edit", form_data=dept, error=None, edit_id=dept_id)
+
+
+@app.route("/departments/delete/<int:dept_id>", methods=["POST"])
+@admin_required
+def delete_department(dept_id):
+    doc_count = query_db("SELECT COUNT(*) AS c FROM DOCTOR WHERE dept_id=%s", (dept_id,), fetchone=True)["c"]
+    if doc_count > 0:
+        flash("Cannot delete department: doctors are still assigned.", "danger")
+        return redirect(url_for("departments"))
+    execute_db("DELETE FROM DEPARTMENT WHERE dept_id=%s", (dept_id,))
+    return redirect(url_for("departments"))
+
+
+# ─────────────────────────────────────────────
+# ROOM CRUD (ADMIN)
+# ─────────────────────────────────────────────
+@app.route("/rooms")
+@admin_required
+def rooms():
+    rows = query_db("""
+        SELECT r.*, d.dept_name
+        FROM ROOM r
+        JOIN DEPARTMENT d ON d.dept_id = r.dept_id
+        ORDER BY r.room_number
+    """)
+    depts = query_db("SELECT dept_id, dept_name FROM DEPARTMENT ORDER BY dept_name")
+    return render_template("rooms.html", rooms=rows, depts=depts, form_mode="list", form_data=None, error=None)
+
+
+@app.route("/rooms/add", methods=["GET", "POST"])
+@admin_required
+def add_room():
+    if request.method == "POST":
+        f = request.form
+        try:
+            execute_db("""
+                INSERT INTO ROOM (room_number, room_type, dept_id, capacity, daily_charge, status)
+                VALUES (%s, %s, %s, %s, %s, 'Available')
+            """, (
+                f.get("room_number", "").strip(),
+                f.get("room_type"),
+                f.get("dept_id"),
+                f.get("capacity"),
+                f.get("daily_charge")
+            ))
+            return redirect(url_for("rooms"))
+        except Exception as e:
+            rows = query_db("""
+                SELECT r.*, d.dept_name
+                FROM ROOM r
+                JOIN DEPARTMENT d ON d.dept_id = r.dept_id
+                ORDER BY r.room_number
+            """)
+            depts = query_db("SELECT dept_id, dept_name FROM DEPARTMENT ORDER BY dept_name")
+            return render_template("rooms.html", rooms=rows, depts=depts, form_mode="add", form_data=f, error=f"Error: {e}")
+
+    rows = query_db("""
+        SELECT r.*, d.dept_name
+        FROM ROOM r
+        JOIN DEPARTMENT d ON d.dept_id = r.dept_id
+        ORDER BY r.room_number
+    """)
+    depts = query_db("SELECT dept_id, dept_name FROM DEPARTMENT ORDER BY dept_name")
+    return render_template("rooms.html", rooms=rows, depts=depts, form_mode="add", form_data=None, error=None)
+
+
+@app.route("/rooms/edit/<int:room_id>", methods=["GET", "POST"])
+@admin_required
+def edit_room(room_id):
+    room = query_db("SELECT * FROM ROOM WHERE room_id=%s", (room_id,), fetchone=True)
+    if not room:
+        flash("Room not found.", "danger")
+        return redirect(url_for("rooms"))
+
+    if request.method == "POST":
+        f = request.form
+        try:
+            execute_db("""
+                UPDATE ROOM
+                SET room_number=%s, room_type=%s, dept_id=%s, capacity=%s, daily_charge=%s
+                WHERE room_id=%s
+            """, (
+                f.get("room_number", "").strip(),
+                f.get("room_type"),
+                f.get("dept_id"),
+                f.get("capacity"),
+                f.get("daily_charge"),
+                room_id
+            ))
+            return redirect(url_for("rooms"))
+        except Exception as e:
+            rows = query_db("""
+                SELECT r.*, d.dept_name
+                FROM ROOM r
+                JOIN DEPARTMENT d ON d.dept_id = r.dept_id
+                ORDER BY r.room_number
+            """)
+            depts = query_db("SELECT dept_id, dept_name FROM DEPARTMENT ORDER BY dept_name")
+            return render_template("rooms.html", rooms=rows, depts=depts, form_mode="edit", form_data={**room, **f}, error=f"Error: {e}", edit_id=room_id)
+
+    rows = query_db("""
+        SELECT r.*, d.dept_name
+        FROM ROOM r
+        JOIN DEPARTMENT d ON d.dept_id = r.dept_id
+        ORDER BY r.room_number
+    """)
+    depts = query_db("SELECT dept_id, dept_name FROM DEPARTMENT ORDER BY dept_name")
+    return render_template("rooms.html", rooms=rows, depts=depts, form_mode="edit", form_data=room, error=None, edit_id=room_id)
+
+
+@app.route("/rooms/delete/<int:room_id>", methods=["POST"])
+@admin_required
+def delete_room(room_id):
+    status_row = query_db("SELECT status FROM ROOM WHERE room_id=%s", (room_id,), fetchone=True)
+    if not status_row:
+        flash("Room not found.", "danger")
+        return redirect(url_for("rooms"))
+    if status_row["status"] == "Occupied":
+        flash("Cannot delete room: room is currently occupied.", "danger")
+        return redirect(url_for("rooms"))
+
+    execute_db("DELETE FROM ROOM WHERE room_id=%s", (room_id,))
+    return redirect(url_for("rooms"))
+
+
+# ─────────────────────────────────────────────
+# MEDICINE CRUD (ADMIN)
+# ─────────────────────────────────────────────
+@app.route("/medicines")
+@admin_required
+def medicines():
+    rows = query_db("SELECT * FROM MEDICINE ORDER BY medicine_name")
+    return render_template("medicines.html", medicines=rows, form_mode="list", form_data=None, error=None)
+
+
+@app.route("/medicines/add", methods=["GET", "POST"])
+@admin_required
+def add_medicine():
+    if request.method == "POST":
+        f = request.form
+        try:
+            execute_db("""
+                INSERT INTO MEDICINE (medicine_name, generic_name, category, unit_price, stock_quantity, manufacturer)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (
+                f.get("medicine_name", "").strip(),
+                f.get("generic_name", "").strip(),
+                f.get("category", "").strip(),
+                f.get("unit_price"),
+                f.get("stock_quantity"),
+                f.get("manufacturer", "").strip(),
+            ))
+            return redirect(url_for("medicines"))
+        except Exception as e:
+            rows = query_db("SELECT * FROM MEDICINE ORDER BY medicine_name")
+            return render_template("medicines.html", medicines=rows, form_mode="add", form_data=f, error=f"Error: {e}")
+
+    rows = query_db("SELECT * FROM MEDICINE ORDER BY medicine_name")
+    return render_template("medicines.html", medicines=rows, form_mode="add", form_data=None, error=None)
+
+
+@app.route("/medicines/edit/<int:medicine_id>", methods=["GET", "POST"])
+@admin_required
+def edit_medicine(medicine_id):
+    med = query_db("SELECT * FROM MEDICINE WHERE medicine_id=%s", (medicine_id,), fetchone=True)
+    if not med:
+        flash("Medicine not found.", "danger")
+        return redirect(url_for("medicines"))
+
+    if request.method == "POST":
+        f = request.form
+        try:
+            execute_db("""
+                UPDATE MEDICINE
+                SET medicine_name=%s, generic_name=%s, category=%s, unit_price=%s, stock_quantity=%s, manufacturer=%s
+                WHERE medicine_id=%s
+            """, (
+                f.get("medicine_name", "").strip(),
+                f.get("generic_name", "").strip(),
+                f.get("category", "").strip(),
+                f.get("unit_price"),
+                f.get("stock_quantity"),
+                f.get("manufacturer", "").strip(),
+                medicine_id
+            ))
+            return redirect(url_for("medicines"))
+        except Exception as e:
+            rows = query_db("SELECT * FROM MEDICINE ORDER BY medicine_name")
+            return render_template("medicines.html", medicines=rows, form_mode="edit", form_data={**med, **f}, error=f"Error: {e}", edit_id=medicine_id)
+
+    rows = query_db("SELECT * FROM MEDICINE ORDER BY medicine_name")
+    return render_template("medicines.html", medicines=rows, form_mode="edit", form_data=med, error=None, edit_id=medicine_id)
+
+
+@app.route("/medicines/delete/<int:medicine_id>", methods=["POST"])
+@admin_required
+def delete_medicine(medicine_id):
+    used = query_db("SELECT COUNT(*) AS c FROM PRESCRIPTION_DETAILS WHERE medicine_id=%s", (medicine_id,), fetchone=True)["c"]
+    if used > 0:
+        flash("Cannot delete medicine: used in prescription records.", "danger")
+        return redirect(url_for("medicines"))
+    execute_db("DELETE FROM MEDICINE WHERE medicine_id=%s", (medicine_id,))
+    return redirect(url_for("medicines"))
+
 # ─────────────────────────────────────────────
 # APPOINTMENT CRUD
 # ─────────────────────────────────────────────
 @app.route("/appointments")
 @login_required
 def appointments():
-    rows = query_db("""
-        SELECT a.appointment_id,
-               CONCAT(p.first_name,' ',p.last_name) AS patient_name,
-               CONCAT(s.first_name,' ',s.last_name) AS doctor_name,
-               d.specialization,
-               a.appointment_date, a.appointment_time,
-               a.reason, a.status
-        FROM APPOINTMENT a
-        JOIN PATIENT p ON p.patient_id=a.patient_id
-        JOIN DOCTOR d  ON d.doctor_id=a.doctor_id
-        JOIN STAFF s   ON s.staff_id=d.staff_id
-        ORDER BY a.appointment_date DESC, a.appointment_time DESC
-    """)
+    if session.get("role") == "Doctor":
+        doctor_id = get_logged_in_doctor_id()
+        rows = query_db("""
+            SELECT a.appointment_id,
+                   CONCAT(p.first_name,' ',p.last_name) AS patient_name,
+                   CONCAT(s.first_name,' ',s.last_name) AS doctor_name,
+                   d.specialization,
+                   a.appointment_date, a.appointment_time,
+                   a.reason, a.status
+            FROM APPOINTMENT a
+            JOIN PATIENT p ON p.patient_id=a.patient_id
+            JOIN DOCTOR d  ON d.doctor_id=a.doctor_id
+            JOIN STAFF s   ON s.staff_id=d.staff_id
+            WHERE a.doctor_id=%s
+            ORDER BY a.appointment_date DESC, a.appointment_time DESC
+        """, (doctor_id,))
+    else:
+        rows = query_db("""
+            SELECT a.appointment_id,
+                   CONCAT(p.first_name,' ',p.last_name) AS patient_name,
+                   CONCAT(s.first_name,' ',s.last_name) AS doctor_name,
+                   d.specialization,
+                   a.appointment_date, a.appointment_time,
+                   a.reason, a.status
+            FROM APPOINTMENT a
+            JOIN PATIENT p ON p.patient_id=a.patient_id
+            JOIN DOCTOR d  ON d.doctor_id=a.doctor_id
+            JOIN STAFF s   ON s.staff_id=d.staff_id
+            ORDER BY a.appointment_date DESC, a.appointment_time DESC
+        """)
     return render_template("appointments.html", appointments=rows)
 
 @app.route("/appointments/add", methods=["GET","POST"])
@@ -381,7 +1079,7 @@ def discharge_patient(aid):
 # BILLING
 # ─────────────────────────────────────────────
 @app.route("/billing")
-@login_required
+@doctor_or_staff_required
 def billing():
     rows = query_db("""
         SELECT b.bill_id, CONCAT(p.first_name,' ',p.last_name) AS patient_name,
@@ -395,7 +1093,7 @@ def billing():
     return render_template("billing.html", bills=rows)
 
 @app.route("/billing/pay/<int:bid>", methods=["POST"])
-@login_required
+@doctor_or_staff_required
 def record_payment(bid):
     # BUG FIX: form data is always a string — must convert to float before SQL arithmetic
     try:
@@ -408,16 +1106,71 @@ def record_payment(bid):
     method = request.form.get("method", "Cash") or "Cash"
     execute_db("""
         UPDATE BILLING
-        SET paid_amount = paid_amount + %s,
-            payment_method = %s,
-            payment_status = CASE
-                WHEN (paid_amount + %s) >= total_amount THEN 'Paid'
-                WHEN (paid_amount + %s) > 0             THEN 'Partial'
-                ELSE 'Pending'
-            END
+        SET paid_amount     = paid_amount + %s,
+            payment_method  = %s
         WHERE bill_id = %s
-    """, (amount, method, amount, amount, bid))
+    """, (amount, method, bid))
+    # Update payment_status based on remaining balance
+    execute_db("""
+        UPDATE BILLING
+        SET payment_status = CASE
+            WHEN paid_amount >= total_amount THEN 'Paid'
+            WHEN paid_amount > 0 THEN 'Partial'
+            ELSE 'Pending'
+        END
+        WHERE bill_id = %s
+    """, (bid,))
     return redirect(url_for("billing"))
+
+
+@app.route("/billing/view/<int:bid>")
+@doctor_or_staff_required
+def billing_view(bid):
+    row = query_db("""
+        SELECT b.*, CONCAT(p.first_name,' ',p.last_name) AS patient_name
+        FROM BILLING b
+        JOIN PATIENT p ON p.patient_id=b.patient_id
+        WHERE b.bill_id=%s
+    """, (bid,), fetchone=True)
+    if not row:
+        return render_template("error.html", msg="Bill not found.")
+    return render_template("billing_view.html", bill=row)
+
+
+@app.route("/billing/generate", methods=["GET", "POST"])
+@doctor_or_staff_required
+def billing_generate():
+    patients_list = query_db("""
+        SELECT patient_id, CONCAT(first_name,' ',last_name) AS name
+        FROM PATIENT
+        WHERE status='Active'
+        ORDER BY first_name
+    """)
+    admissions_list = query_db("""
+        SELECT admission_id, patient_id
+        FROM ADMISSION
+        WHERE status='Active'
+        ORDER BY admission_id DESC
+    """)
+
+    error = None
+    if request.method == "POST":
+        f = request.form
+        try:
+            patient_id = f.get("patient_id")
+            admission_id = f.get("admission_id") or None
+            total_amount = float(f.get("total_amount") or 0)
+            if total_amount < 0:
+                raise ValueError("Total amount must be non-negative.")
+            execute_db("""
+                INSERT INTO BILLING (patient_id, admission_id, total_amount, paid_amount, bill_date, payment_status)
+                VALUES (%s, %s, %s, 0.00, CURDATE(), 'Pending')
+            """, (patient_id, admission_id, total_amount))
+            return redirect(url_for("billing"))
+        except Exception as e:
+            error = f"Error: {e}"
+
+    return render_template("billing_generate.html", patients=patients_list, admissions=admissions_list, error=error)
 
 # ─────────────────────────────────────────────
 # STAFF MANAGEMENT
@@ -438,11 +1191,98 @@ def staff():
     """)
     return render_template("staff.html", staff=rows)
 
+
+@app.route("/staff/add", methods=["GET", "POST"])
+@admin_required
+def add_staff():
+    error = None
+    if request.method == "POST":
+        f = request.form
+        try:
+            sid = execute_db("""
+                INSERT INTO STAFF
+                    (first_name, last_name, staff_type, phone, email, hire_date, salary, shift, status)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'Active')
+            """, (
+                f.get("first_name", "").strip(),
+                f.get("last_name", "").strip(),
+                f.get("staff_type"),
+                f.get("phone", "").strip(),
+                f.get("email", "").strip() or None,
+                f.get("hire_date"),
+                f.get("salary"),
+                f.get("shift"),
+            ))
+
+            # Create USERS account (role Staff) linked via staff_id
+            email = (f.get("email", "") or "").strip()
+            username = (email.split("@")[0] if "@" in email and email else f"staff_{sid}")
+            execute_db("""
+                INSERT INTO USERS (username, email, password_hash, role, staff_id, is_active)
+                VALUES (%s, %s, %s, 'Staff', %s, 1)
+            """, (username, email or None, hash_pw("Staff@123"), sid))
+
+            return redirect(url_for("staff"))
+        except Exception as e:
+            error = f"Error: {e}"
+
+    return render_template("staff_form.html", staff_member=None, error=error, action="Add")
+
+
+@app.route("/staff/edit/<int:staff_id>", methods=["GET", "POST"])
+@admin_required
+def edit_staff(staff_id):
+    staff_member = query_db("SELECT * FROM STAFF WHERE staff_id=%s", (staff_id,), fetchone=True)
+    if not staff_member:
+        flash("Staff member not found.", "danger")
+        return redirect(url_for("staff"))
+
+    error = None
+    if request.method == "POST":
+        f = request.form
+        try:
+            execute_db("""
+                UPDATE STAFF
+                SET first_name=%s, last_name=%s, staff_type=%s, phone=%s, salary=%s, shift=%s, status=%s
+                WHERE staff_id=%s
+            """, (
+                f.get("first_name", "").strip(),
+                f.get("last_name", "").strip(),
+                f.get("staff_type"),
+                f.get("phone", "").strip(),
+                f.get("salary"),
+                f.get("shift"),
+                f.get("status"),
+                staff_id,
+            ))
+            # optional email update
+            if f.get("email") is not None:
+                execute_db("UPDATE STAFF SET email=%s WHERE staff_id=%s", (f.get("email") or None, staff_id))
+                execute_db("UPDATE USERS SET email=%s WHERE staff_id=%s", (f.get("email") or None, staff_id))
+            return redirect(url_for("staff"))
+        except Exception as e:
+            error = f"Error: {e}"
+            staff_member = {**staff_member, **f}
+
+    return render_template("staff_form.html", staff_member=staff_member, error=error, action="Edit")
+
+
+@app.route("/staff/delete/<int:staff_id>", methods=["POST"])
+@admin_required
+def delete_staff(staff_id):
+    try:
+        execute_db("DELETE FROM USERS WHERE staff_id=%s", (staff_id,))
+        execute_db("DELETE FROM STAFF WHERE staff_id=%s", (staff_id,))
+    except Exception as e:
+        flash(f"Staff delete blocked by dependent records: {e}", "danger")
+        return redirect(url_for("staff"))
+    return redirect(url_for("staff"))
+
 # ─────────────────────────────────────────────
 # REPORTS & EXPORT
 # ─────────────────────────────────────────────
 @app.route("/reports")
-@login_required
+@doctor_required
 def reports():
     patient_report = query_db("""
         SELECT p.patient_id,
@@ -462,7 +1302,7 @@ def reports():
     return render_template("reports.html", patient_report=patient_report)
 
 @app.route("/reports/export/csv")
-@login_required
+@doctor_required
 def export_csv():
     rows = query_db("""
         SELECT p.patient_id, CONCAT(p.first_name,' ',p.last_name) AS patient_name,
@@ -494,19 +1334,19 @@ def export_csv():
 # API ENDPOINTS (for dashboard JS charts)
 # ─────────────────────────────────────────────
 @app.route("/api/kpis")
-@login_required
+@doctor_required
 def api_kpis():
     return jsonify({
         "total_patients":    query_db("SELECT COUNT(*) AS c FROM PATIENT WHERE status='Active'", fetchone=True)["c"],
         "total_doctors":     query_db("SELECT COUNT(*) AS c FROM DOCTOR", fetchone=True)["c"],
         "active_admissions": query_db("SELECT COUNT(*) AS c FROM ADMISSION WHERE status='Active'", fetchone=True)["c"],
         "monthly_revenue":   float(query_db(
-            "SELECT COALESCE(SUM(paid_amount),0) AS r FROM BILLING WHERE MONTH(bill_date)=MONTH(CURDATE()) AND YEAR(bill_date)=YEAR(CURDATE())",
+            "SELECT COALESCE(SUM(paid_amount),0) AS r FROM BILLING WHERE MONTH(payment_date)=MONTH(CURDATE()) AND YEAR(payment_date)=YEAR(CURDATE()) AND payment_status IN ('Paid','Partial')",
             fetchone=True)["r"])
     })
 
 @app.route("/api/dept_chart")
-@login_required
+@doctor_required
 def api_dept_chart():
     rows = query_db("""
         SELECT dep.dept_name AS label, COUNT(DISTINCT a.patient_id) AS value
@@ -518,17 +1358,33 @@ def api_dept_chart():
     return jsonify([dict(r) for r in rows])
 
 @app.route("/api/revenue_chart")
-@login_required
+@doctor_required
 def api_revenue_chart():
     rows = query_db("""
-        SELECT DATE_FORMAT(bill_date,'%b %Y') AS label,
+        SELECT DATE_FORMAT(payment_date,'%b %Y') AS label,
                ROUND(SUM(paid_amount),2) AS value
         FROM BILLING
-        WHERE bill_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-        GROUP BY YEAR(bill_date), MONTH(bill_date)
-        ORDER BY YEAR(bill_date), MONTH(bill_date)
+        WHERE payment_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+          AND payment_status IN ('Paid','Partial')
+        GROUP BY YEAR(payment_date), MONTH(payment_date)
+        ORDER BY YEAR(payment_date), MONTH(payment_date)
     """)
     return jsonify([dict(r) for r in rows])
+
+@app.route("/profile")
+def profile():
+    if "user_id" not in session: return redirect(url_for("login"))
+    return render_template("placeholder.html", title="My Profile")
+
+@app.route("/settings")
+def settings():
+    if "user_id" not in session: return redirect(url_for("login"))
+    return render_template("placeholder.html", title="Settings")
+
+@app.route("/change-password")
+def change_password():
+    if "user_id" not in session: return redirect(url_for("login"))
+    return render_template("placeholder.html", title="Change Password")
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

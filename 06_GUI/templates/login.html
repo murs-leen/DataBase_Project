@@ -1,84 +1,56 @@
-<!-- HMS – Login Page -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Login – Hospital Management System</title>
-<meta name="description" content="Secure login for Hospital Management System">
+<title>Login – ClinicFlow</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<style>
-  .demo-creds { margin-top:20px; background:rgba(79,125,243,.08); border:1px solid rgba(79,125,243,.2);
-    border-radius:8px; padding:12px 14px; font-size:12px; color:var(--text-muted); }
-  .demo-creds strong { color:var(--text); display:block; margin-bottom:6px; }
-  .demo-creds code { background:var(--surface-2); padding:1px 6px; border-radius:4px;
-    color:var(--primary); font-family:monospace; }
-  .login-divider { display:flex;align-items:center;gap:10px;margin:20px 0;color:var(--text-muted);font-size:12px; }
-  .login-divider::before,.login-divider::after { content:'';flex:1;height:1px;background:var(--border); }
-</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
-<body>
-<div class="login-page">
-  <div class="login-card">
-    <div class="login-logo">🏥</div>
-    <h1>Welcome Back</h1>
-    <p>Hospital Management System</p>
-
-    {% if error %}
-    <div class="alert alert-danger">⚠ {{ error }}</div>
-    {% endif %}
-
-    <form method="POST" id="loginForm" novalidate>
-      <div class="form-group mb-2">
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username"
-               placeholder="Enter your username" required autocomplete="username">
-        <span class="text-muted" id="usernameErr" style="color:var(--danger);display:none;font-size:11px">
-          Username is required
-        </span>
-      </div>
-      <div class="form-group mb-3">
-        <label for="password">Password</label>
-        <div style="position:relative">
-          <input type="password" id="password" name="password"
-                 placeholder="Enter your password" required autocomplete="current-password">
-          <button type="button" id="togglePw" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
-            background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px">👁</button>
-        </div>
-        <span class="text-muted" id="passwordErr" style="color:var(--danger);display:none;font-size:11px">
-          Password is required
-        </span>
-      </div>
-      <button type="submit" class="btn btn-primary w-full" style="justify-content:center;padding:11px">
-        Sign In
-      </button>
-    </form>
-
-    <div class="login-divider">Demo Accounts</div>
-    <div class="demo-creds">
-      <strong>🔑 Available Credentials</strong>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">
-        <span>Admin:</span>     <span><code>admin</code> / <code>Admin@123</code></span>
-        <span>Doctor:</span>    <span><code>dr_ahmed</code> / <code>Doc@1234</code></span>
-        <span>Staff:</span>     <span><code>staff_zahid</code> / <code>Staff@123</code></span>
-        <span>Viewer:</span>    <span><code>viewer</code> / <code>View@123</code></span>
+<body style="display:grid;place-items:center;padding:24px;">
+<section class="card fade-in" style="width:min(1100px,100%);padding:0;overflow:hidden;">
+  <div class="kpi-grid" style="margin:0;">
+    <div class="hero-section" style="grid-column: span 7; margin:0; border-radius:0;">
+      <div class="hero-orb"></div>
+      <h1 class="hero-title">Welcome back to ClinicFlow</h1>
+      <p class="hero-subtitle">Securely manage patients, visits, and billing from one modern medical workspace.</p>
+      <div class="feature-grid" style="margin-bottom:0;">
+        <article class="card feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-user-doctor fa-xl icon-accent"></i></div>
+          <h3>Clinical Focus</h3>
+          <p>Fast workflows for doctors and support staff.</p>
+        </article>
+        <article class="card feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-file-invoice-dollar fa-xl icon-accent"></i></div>
+          <h3>Revenue Clarity</h3>
+          <p>Billing status and balances in real time.</p>
+        </article>
+        <article class="card feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-shield-heart fa-xl icon-accent"></i></div>
+          <h3>Data Reliability</h3>
+          <p>Built for secure day-to-day operations.</p>
+        </article>
       </div>
     </div>
+    <div class="card" style="grid-column: span 5; margin:20px;">
+      <div class="card-header"><h2>Sign In</h2></div>
+      {% if error %}
+      <div class="alert alert-danger">{{ error }}</div>
+      {% endif %}
+      <form method="POST" class="form-grid">
+        <div class="form-group full">
+          <label>Email</label>
+          <input type="text" name="email" placeholder="doctor@clinicflow.com" required>
+        </div>
+        <div class="form-group full">
+          <label>Password</label>
+          <input type="password" name="password" placeholder="Enter password" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:min(240px,100%);justify-self:center;">Sign In</button>
+      </form>
+      <a href="{{ url_for('signup') }}" class="btn btn-ghost w-full mt-2">Create an account</a>
+    </div>
   </div>
-</div>
-<script>
-  document.getElementById('togglePw').addEventListener('click',()=>{
-    const pw=document.getElementById('password');
-    pw.type=pw.type==='password'?'text':'password';
-  });
-  document.getElementById('loginForm').addEventListener('submit',e=>{
-    let valid=true;
-    const u=document.getElementById('username');
-    const p=document.getElementById('password');
-    document.getElementById('usernameErr').style.display=u.value.trim()?'none':'block';
-    document.getElementById('passwordErr').style.display=p.value?'none':'block';
-    if(!u.value.trim()||!p.value){e.preventDefault();}
-  });
-</script>
+</section>
 </body>
 </html>

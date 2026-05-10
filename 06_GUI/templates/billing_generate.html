@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Generate Bill{% endblock %}
+{% block page_title %}<i class="fa-solid fa-file-invoice-dollar fa-lg icon-primary"></i> Generate Bill{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:760px;">
+  <div class="card-header">
+    <h2>New Billing Record</h2>
+    <a href="{{ url_for('billing') }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-arrow-left fa-sm"></i> Back</a>
+  </div>
+  {% if error %}
+  <div class="alert alert-danger"><i class="fa-solid fa-triangle-exclamation fa-sm"></i> {{ error }}</div>
+  {% endif %}
+  <form method="POST" class="form-grid">
+    <div class="form-group full">
+      <label>Patient *</label>
+      <select name="patient_id" required>
+        <option value="">-- Select Patient --</option>
+        {% for p in patients %}
+        <option value="{{ p.patient_id }}">#{{ p.patient_id }} - {{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group full">
+      <label>Admission (optional)</label>
+      <select name="admission_id">
+        <option value="">-- None --</option>
+        {% for a in admissions %}
+        <option value="{{ a.admission_id }}">Admission #{{ a.admission_id }} (Patient #{{ a.patient_id }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group full">
+      <label>Total Amount (PKR) *</label>
+      <input type="number" min="0" step="0.01" name="total_amount" required>
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk fa-sm"></i> Create Bill</button>
+  </form>
+</div>
+{% endblock %}
+

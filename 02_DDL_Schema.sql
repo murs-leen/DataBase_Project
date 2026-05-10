@@ -244,8 +244,9 @@ CREATE TABLE PRESCRIPTION_DETAILS (
 CREATE TABLE USERS (
     user_id       INT           NOT NULL AUTO_INCREMENT,
     username      VARCHAR(50)   NOT NULL,
+    email         VARCHAR(100)  UNIQUE,
     password_hash VARCHAR(255)  NOT NULL,
-    role          ENUM('Admin','Doctor','Staff','Viewer') NOT NULL,
+    role          ENUM('Admin','Doctor','Staff') NOT NULL,
     staff_id      INT           DEFAULT NULL,
     is_active     TINYINT(1)    NOT NULL DEFAULT 1,
     created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,

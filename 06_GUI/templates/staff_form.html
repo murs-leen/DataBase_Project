@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Staff{% endblock %}
+{% block page_title %}<i class="fa-solid fa-people-group fa-lg icon-primary"></i> {{ action }} Staff{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:760px;">
+  <div class="card-header">
+    <h2>{% if action == 'Edit' %}Edit Staff Member{% else %}Add Staff Member{% endif %}</h2>
+    <a href="{{ url_for('staff') }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-arrow-left fa-sm"></i> Back</a>
+  </div>
+
+  {% if error %}
+  <div class="alert alert-danger"><i class="fa-solid fa-triangle-exclamation fa-sm"></i> {{ error }}</div>
+  {% endif %}
+
+  <form method="POST" class="form-grid">
+    <div class="form-group">
+      <label>First Name *</label>
+      <input name="first_name" required value="{{ staff_member.first_name if staff_member else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Last Name *</label>
+      <input name="last_name" required value="{{ staff_member.last_name if staff_member else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Staff Type *</label>
+      <select name="staff_type" required>
+        {% set st = staff_member.staff_type if staff_member else '' %}
+        <option value="">-- Select --</option>
+        {% for t in ['Doctor','Nurse','Technician','Admin'] %}
+        <option value="{{ t }}" {% if st==t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Phone *</label>
+      <input name="phone" required value="{{ staff_member.phone if staff_member else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" name="email" value="{{ staff_member.email if staff_member else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Hire Date *</label>
+      <input type="date" name="hire_date" required value="{{ staff_member.hire_date if staff_member else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Salary *</label>
+      <input type="number" step="0.01" min="0" name="salary" required value="{{ staff_member.salary if staff_member else '' }}">
+    </div>
+    <div class="form-group">
+      <label>Shift *</label>
+      {% set sh = staff_member.shift if staff_member else '' %}
+      <select name="shift" required>
+        <option value="">-- Select --</option>
+        <option value="Morning" {% if sh=='Morning' %}selected{% endif %}>Morning</option>
+        <option value="Evening" {% if sh=='Evening' %}selected{% endif %}>Evening</option>
+        <option value="Night" {% if sh=='Night' %}selected{% endif %}>Night</option>
+      </select>
+    </div>
+    {% if action == 'Edit' %}
+    <div class="form-group">
+      <label>Status *</label>
+      {% set ss = staff_member.status if staff_member else 'Active' %}
+      <select name="status" required>
+        <option value="Active" {% if ss=='Active' %}selected{% endif %}>Active</option>
+        <option value="Inactive" {% if ss=='Inactive' %}selected{% endif %}>Inactive</option>
+      </select>
+    </div>
+    {% endif %}
+
+    <div style="display:flex;gap:10px;">
+      <button type="submit" class="btn btn-primary">
+        {% if action == 'Edit' %}
+        <i class="fa-solid fa-floppy-disk fa-sm"></i> Update
+        {% else %}
+        <i class="fa-solid fa-plus fa-sm"></i> Create
+        {% endif %}
+      </button>
+      <a href="{{ url_for('staff') }}" class="btn btn-ghost"><i class="fa-solid fa-xmark fa-sm"></i> Cancel</a>
+    </div>
+  </form>
+
+  {% if action == 'Add' %}
+  <div class="text-muted mt-3">
+    New staff also gets a USERS login with default password <strong>Staff@123</strong>.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+

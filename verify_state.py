@@ -1,0 +1,35 @@
+import mysql.connector
+
+conn = mysql.connector.connect(host="localhost", user="root", password="password", database="hms_db")
+cur = conn.cursor()
+
+cur.execute("SELECT dept_id, dept_name FROM DEPARTMENT ORDER BY dept_id")
+print("DEPARTMENTS", cur.fetchall())
+
+cur.execute("SELECT room_id, room_number, status FROM ROOM ORDER BY room_id")
+print("ROOMS", cur.fetchall())
+
+cur.execute("SELECT medicine_id, medicine_name FROM MEDICINE ORDER BY medicine_id")
+print("MEDICINES", cur.fetchall())
+
+cur.execute(
+    """
+SELECT 'USERS' as T, COUNT(*) FROM USERS
+UNION ALL SELECT 'PATIENT', COUNT(*) FROM PATIENT
+UNION ALL SELECT 'DOCTOR', COUNT(*) FROM DOCTOR
+UNION ALL SELECT 'STAFF', COUNT(*) FROM STAFF
+UNION ALL SELECT 'APPOINTMENT', COUNT(*) FROM APPOINTMENT
+UNION ALL SELECT 'ADMISSION', COUNT(*) FROM ADMISSION
+UNION ALL SELECT 'PRESCRIPTION', COUNT(*) FROM PRESCRIPTION
+UNION ALL SELECT 'PRESCRIPTION_DETAILS', COUNT(*) FROM PRESCRIPTION_DETAILS
+UNION ALL SELECT 'BILLING', COUNT(*) FROM BILLING
+UNION ALL SELECT 'ROOM', COUNT(*) FROM ROOM
+UNION ALL SELECT 'MEDICINE', COUNT(*) FROM MEDICINE
+UNION ALL SELECT 'DEPARTMENT', COUNT(*) FROM DEPARTMENT
+"""
+)
+print("COUNTS", cur.fetchall())
+
+cur.close()
+conn.close()
+

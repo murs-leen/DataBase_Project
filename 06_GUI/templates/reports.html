@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Reports{% endblock %}
-{% block page_title %}📋 Reports{% endblock %}
+{% block page_title %}<i class="fa-solid fa-chart-line fa-lg icon-primary"></i> Reports{% endblock %}
 {% block content %}
 
 <div class="card mb-3">
   <div class="card-header">
     <h2>Patient Billing Report</h2>
     <div style="display:flex;gap:8px">
-      <a href="{{ url_for('export_csv') }}" class="btn btn-ghost btn-sm">⬇ Export CSV</a>
+      <a href="{{ url_for('export_csv') }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-download fa-sm"></i> Export CSV</a>
     </div>
   </div>
 
